@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimate #{{ estimate.id }}</title>
+    <style>
+        /* Basic Reset and Body Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #FFFFFF; /* Ensure white background */
+            color: #333;
+            line-height: 1.6;
+            font-size: 10pt; /* Base font size for PDF */
+        }
+
+        .container {
+            width: 80%; /* Adjust width as needed for your PDF layout */
+            margin: 20mm auto; /* Center container with margin */
+            padding: 15mm; /* Inner padding */
+            background-color: #fff; /* White background for the content area */
+            border: 1px solid #ddd; /* Subtle border around the main content */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        }
+
+        /* Header Styles */
+        .header {
+            text-align: center;
+            margin-bottom: 20mm; /* Space below header */
+            border-bottom: 2px solid #004a7c; /* Hardcoded color */
+            padding-bottom: 10mm;
+        }
+
+        .header h1 {
+            color: #004a7c; /* Hardcoded color */
+            margin: 0 0 5mm 0;
+            font-size: 24pt;
+        }
+
+        .header p {
+            margin: 2px 0;
+            color: #555;
+            font-size: 10pt;
+        }
+
+        /* Section Styles */
+        .section {
+            margin-bottom: 20mm; /* Space between sections */
+            padding: 10mm;
+            border: 1px solid #eee; /* Light border for sections */
+            border-radius: 5px;
+            background-color: #f9f9f9; /* Slightly off-white background for sections */
+        }
+
+        .section-title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #004a7c; /* Hardcoded color */
+            margin-bottom: 10mm;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5mm;
+        }
+
+        /* Information Block Styles (Company/Customer) */
+        .info-block {
+            margin-bottom: 15mm;
+        }
+
+        .info-block p {
+            margin: 5px 0;
+            font-size: 10pt;
+        }
+
+        .info-block strong {
+            display: inline-block;
+            width: 100px; /* Align labels */
+            color: #555;
+        }
+
+         /* Container for side-by-side info blocks */
+        .info-container {
+            display: flex; /* Use flexbox for layout */
+            justify-content: space-between; /* Space out the two columns */
+            margin-bottom: 20mm; /* Space below this container */
+        }
+
+        .info-column {
+            width: 48%; /* Give each column slightly less than half width to allow for spacing */
+            /* Inherits section padding and border from parent .section */
+        }
+
+        /* Table Styles */
+        .table {
+            width: 100%;
+            border-collapse: collapse; /* Remove space between borders */
+            margin-bottom: 15mm;
+        }
+
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 8mm 10mm; /* Padding inside cells */
+            text-align: left;
+            font-size: 9pt;
+        }
+
+        .table th {
+            background-color: #004a7c; /* Hardcoded color */
+            color: #fff;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .table tbody tr:nth-child(even) {
+            background-color: #f2f2f2; /* Zebra striping for rows */
+        }
+
+        /* Specific Column Widths (Adjust as needed) */
+        .table th:nth-child(1), .table td:nth-child(1) { width: 30%; } /* Name/Role */
+        .table th:nth-child(2), .table td:nth-child(2) { width: 15%; text-align: right; } /* Unit Price/Count */
+        .table th:nth-child(3), .table td:nth-child(3) { width: 15%; text-align: right; } /* Quantity/Rate */
+        .table th:nth-child(4), .table td:nth-child(4) { width: 20%; text-align: right; } /* Total Cost/Rate Type */
+        .table th:nth-child(5), .table td:nth-child(5) { width: 20%; text-align: right; } /* Total Cost/Actions (Adjust if no actions in PDF)*/
+
+
+         /* Adjust column widths for Room/Area table */
+        .room-table th:nth-child(1), .room-table td:nth-child(1) { width: 25%; } /* Name */
+        .room-table th:nth-child(2), .room-table td:nth-child(2) { width: 20%; } /* Type */
+        .room-table th:nth-child(3), .room-table td:nth-child(3) { width: 20%; text-align: right; } /* Floor Area */
+        .room-table th:nth-child(4), .room-table td:nth-child(4) { width: 20%; text-align: right; } /* Wall Area */
+        .room-table th:nth-child(5), .room-table td:nth-child(5) { width: 15%; text-align: right; } /* Actions (Adjust if no actions in PDF)*/
+
+
+        /* Summary Styles */
+        .summary {
+            margin-top: 20mm;
+            padding-top: 15mm;
+            border-top: 2px solid #ddd;
+        }
+
+        .summary-line {
+            font-size: 10pt;
+            margin-bottom: 8mm;
+            color: #333;
+        }
+
+        .summary-line strong {
+             display: inline-block;
+             width: 150px; /* Align labels */
+             color: #555;
+        }
+
+        .grand-total {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #004a7c; /* Hardcoded color */
+            margin-top: 15mm;
+            padding-top: 10mm;
+            border-top: 2px solid #004a7c; /* Hardcoded color */
+            text-align: right;
+        }
+
+        .remarks {
+            margin-top: 20mm;
+            font-size: 9pt;
+            color: #555;
+            border-top: 1px solid #eee;
+            padding-top: 10mm;
+        }
+
+        /* Footer (Optional) */
+        .footer {
+            text-align: center;
+            margin-top: 30mm;
+            font-size: 8pt;
+            color: #888;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ESTIMATE</h1>
+            {# Added Estimate Number and Date #}
+            <p>Estimate Number: <strong>#{{ estimate.id }}</strong></p>
+            <p>Date: <strong>{{ estimate.estimate_date|date:"F j, Y" }}</strong></p> {# Format date nicely #}
+        </div>
+
+        {# Container for side-by-side Company and Customer info #}
+        <div class="info-container">
+            {# Your Company Information Section - now in a column #}
+            <div class="section info-column">
+                <div class="section-title">Your Company Information</div>
+                 <div class="info-block">
+                     {# Replace with actual company info fields from your user/profile #}
+                     <p><strong>Company Name:</strong> {{ estimate.user.company_name|default:"[Your Company Name]" }}</p>
+                     <p><strong>Address:</strong> {{ estimate.user.company_address|default:"[Your Company Address]" }}</p>
+                     <p><strong>Phone:</strong> {{ estimate.user.company_phone|default:"[Your Company Phone]" }}</p>
+                     <p><strong>Email:</strong> {{ estimate.user.email|default:"[Your Company Email]" }}</p>
+                     <p><strong>Location:</strong> {{ estimate.user.company_location|default:"[Your Company Location]" }}</p>
+                 </div>
+            </div>
+
+            {# Customer Information Section - now in a column on the right #}
+            {% if estimate.customer %}
+            <div class="section info-column">
+                <div class="section-title">Customer Information</div>
+                <div class="info-block">
+                    <p><strong>Customer Name:</strong> {{ estimate.customer.name }}</p>
+                    <p><strong>Phone:</strong> {{ estimate.customer.phone|default:"N/A" }}</p> {# Use default filter for optional fields #}
+                    <p><strong>Location:</strong> {{ estimate.customer.location|default:"N/A" }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+
+        {% if estimate.materials.exists %}
+        <div class="section">
+            <div class="section-title">Materials</div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th style="text-align: right;">Unit Price ({{ estimate.currency|default:'₵' }})</th> {# Assuming currency field or default #}
+                        <th style="text-align: right;">Quantity</th>
+                        <th style="text-align: right;">Total Cost ({{ estimate.currency|default:'₵' }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in estimate.materials.all %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td style="text-align: right;">{{ item.unit_price|floatformat:2 }}</td> {# Format to 2 decimal places #}
+                        <td style="text-align: right;">{{ item.quantity|floatformat:2 }}</td>
+                        <td style="text-align: right;">{{ item.total_cost|floatformat:2 }}</td> {# Access calculated total_cost from serializer #}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+             {# Display total material cost from serializer #}
+             <p style="text-align: right; font-weight: bold; font-size: 11pt;">Total Material Cost: {{ estimate.total_material_cost|floatformat:2 }} {{ estimate.currency|default:'₵' }}</p>
+        </div>
+        {% endif %}
+
+         {% if estimate.rooms.exists %}
+        <div class="section">
+            <div class="section-title">Rooms/Areas</div>
+            <table class="table room-table"> {# Use specific class for room table width adjustments #}
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th style="text-align: right;">Floor Area (m²)</th>
+                        <th style="text-align: right;">Wall Area (m²)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in estimate.rooms.all %}
+                    <tr>
+                        <td>{{ room.name }}</td>
+                        <td>{{ room.type|default:"N/A" }}</td>
+                        <td style="text-align: right;">{{ room.floor_area|floatformat:2 }}</td>
+                        <td style="text-align: right;">{{ room.wall_area|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+             {# You might calculate and display total floor/wall area here if needed #}
+             {# Example (requires passing calculated totals from serializer or view context): #}
+             {# <p style="text-align: right; font-weight: bold; font-size: 11pt;">Total Floor Area: {{ estimate.total_floor_area|floatformat:2 }} m²</p> #}
+             {# <p style="text-align: right; font-weight: bold; font-size: 11pt;">Total Wall Area: {{ estimate.total_wall_area|floatformat:2 }} m²</p> #}
+        </div>
+        {% endif %}
+
+
+         {% if estimate.labour.exists %}
+        <div class="section">
+            <div class="section-title">Labour</div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th style="text-align: right;">Count</th>
+                        <th style="text-align: right;">Rate ({{ estimate.currency|default:'₵' }})</th>
+                        <th>Rate Type</th>
+                        <th style="text-align: right;">Total Cost ({{ estimate.currency|default:'₵' }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for worker in estimate.labour.all %}
+                    <tr>
+                        <td>{{ worker.role }}</td>
+                        <td style="text-align: right;">{{ worker.count }}</td>
+                        <td style="text-align: right;">{{ worker.rate|floatformat:2 }}</td>
+                         <td>{{ worker.rate_type|default:"N/A" }}</td>
+                        <td style="text-align: right;">{{ worker.total_cost|floatformat:2 }}</td> {# Access calculated total_cost from serializer #}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {# Display total labour cost from serializer #}
+             <p style="text-align: right; font-weight: bold; font-size: 11pt;">Total Labour Cost: {{ estimate.total_labour_cost|floatformat:2 }} {{ estimate.currency|default:'₵' }}</p>
+        </div>
+        {% endif %}
+
+
+        <div class="section summary">
+            <div class="section-title">Estimate Summary</div>
+
+            {# Display calculated totals from serializer #}
+            <p class="summary-line"><strong>Total Materials:</strong> {{ estimate.total_material_cost|floatformat:2 }} {{ estimate.currency|default:'₵' }}</p>
+            <p class="summary-line"><strong>Total Labour:</strong> {{ estimate.total_labour_cost|floatformat:2 }} {{ estimate.currency|default:'₵' }}</p>
+
+            {# Display Transport Cost #}
+            <p class="summary-line"><strong>Transport Cost:</strong> {{ estimate.transport_cost|floatformat:2 }} {{ estimate.currency|default:'₵' }}</p>
+
+            {# Display Grand Total from serializer #}
+            <div class="grand-total">
+                GRAND TOTAL: {{ estimate.grand_total|floatformat:2 }} {{ estimate.currency|default:'₵' }}
+            </div>
+
+            {% if estimate.remarks %}
+            <div class="remarks">
+                <strong>Remarks / Notes:</strong>
+                <p>{{ estimate.remarks|linebreaksbr }}</p> {# Preserve line breaks from textarea #}
+            </div>
+            {% endif %}
+        </div>
+
+        {# Optional Footer #}
+        <div class="footer">
+             <p>Generated on {{ "now"|date:"F j, Y H:i" }}</p>
+             <p>&copy; {{ "now"|date:"Y" }} Tilenet. All rights reserved.</p>
+        </div>
+
+    </div>
+</body>
+</html>

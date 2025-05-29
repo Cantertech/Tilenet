@@ -1,0 +1,1116 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Estimate - {{ estimate_number|default:"[Estimate Number]" }}</title>
+    <style>
+        /* Define a CSS variable for the primary color */
+        :root {
+            --primary-color: {{ primary_color|default:"#007bff" }}; /* Default to blue if color not provided */
+             --secondary-color: #e9ecef; /* Light grey for table stripes/borders */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding-left: 5mm;
+            padding-right: 5mm;
+            /* Keep top and bottom padding as they were */
+            padding-top: 15mm;
+            padding-bottom: 15mm; /* Reduced padding for more width usage */
+            line-height: 1.5; /* Slightly reduced line height */
+            color: #333;
+            background-color: #fff; /* Explicitly white background */
+        }
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 15px; /* Reduced space between sections */
+            padding: 0;
+             border: none;
+             background-color: #fff;
+        }
+         .section-content {
+             padding: 12px; /* Reduced padding inside sections */
+             border: 1px solid var(--secondary-color);
+             border-radius: 5px;
+         }
+        .header-section {
+             margin-bottom: 20px; /* Reduced space below header */
+        }
+        .header-content, .info-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+             padding-bottom: 10px; /* Reduced space below content under border */
+             border-bottom: 2px solid var(--primary-color); /* Blue underline */
+        }
+        .header-left, .header-right, .info-left, .info-right {
+            flex: 1;
+            min-width: 180px; /* Further adjusted minimum width */
+            margin-right: 20px; /* Reduced space between columns */
+        }
+        .header-right, .info-right {
+             margin-right: 0;
+             text-align: right;
+        }
+         .logo {
+            max-width: 100px; /* Adjusted logo size slightly */
+            height: auto;
+            margin-bottom: 5px;
+        }
+         .powered-by {
+            font-size: 9px; /* Smaller font */
+            color: #777;
+            margin-top: 2px;
+            margin-bottom: 10px; /* Reduced margin */
+            text-align: left;
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 28px; /* Adjusted heading size */
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-weight: bold;
+             text-transform: uppercase;
+        }
+        h2 {
+            color: #333;
+            font-size: 18px; /* Adjusted subheading size */
+            border-bottom: 1px solid var(--secondary-color);
+            padding-bottom: 5px; /* Reduced padding */
+            margin-bottom: 10px; /* Reduced margin */
+            margin-top: 0;
+             font-weight: bold;
+        }
+        h3 {
+             font-size: 16px; /* Adjusted h3 size */
+             margin-bottom: 8px; /* Reduced margin */
+             color: var(--primary-color);
+        }
+        .info-pair {
+             margin-bottom: 5px; /* Reduced space between info pairs */
+             font-size: 14px; /* Adjusted font size */
+             color: #555;
+        }
+        .label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 120px; /* Adjusted label width for alignment */
+            color: #333;
+             margin-right: 5px; /* Reduced space after label */
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px; /* Reduced space below tables */
+        }
+        .table th, .table td {
+             border: 1px solid var(--secondary-color);
+            padding: 8px; /* Reduced padding */
+            text-align: left;
+             font-size: 13px; /* Adjusted font size */
+        }
+        .table th {
+            background-color: var(--primary-color);
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+             text-transform: uppercase;
+        }
+         .table td {
+            text-align: center;
+         }
+        .table tbody tr:nth-child(even) {
+             background-color: #f8f8f8;
+        }
+        .table tfoot td {
+            font-weight: bold;
+            background-color: #eee;
+            text-align: right;
+         }
+         .table tfoot td:last-child {
+             text-align: center;
+         }
+        .room-detail-section, .worker-detail-section {
+             margin-top: 8px; /* Reduced margin */
+             padding-top: 8px; /* Reduced padding */
+             border-top: 1px dashed #ccc;
+             font-size: 12px; /* Smaller font */
+             color: #666;
+             text-align: left;
+             line-height: 1.3; /* Reduced line height */
+        }
+         .room-detail-section h4, .worker-detail-section h4 {
+             margin-bottom: 3px; /* Reduced margin */
+             color: #333;
+             font-size: 14px; /* Adjusted font size */
+         }
+
+        .summary-totals {
+            margin-top: 15px; /* Reduced margin */
+            border-top: 2px solid var(--secondary-color);
+            padding-top: 12px; /* Reduced padding */
+        }
+         .summary-row {
+             display: flex;
+             justify-content: space-between;
+             margin-bottom: 6px; /* Reduced margin */
+             font-size: 15px; /* Adjusted font size */
+         }
+         .summary-row .summary-label {
+             font-weight: bold;
+             color: #555;
+         }
+         .summary-row .summary-value {
+             font-weight: normal;
+             color: #333;
+         }
+        .grand-total-row {
+             margin-top: 10px; /* Reduced margin */
+             padding-top: 10px; /* Reduced padding */
+             border-top: 2px solid var(--primary-color);
+             font-size: 20px; /* Adjusted font size */
+             font-weight: bold;
+             color: var(--primary-color);
+        }
+         .grand-total-row .summary-value {
+             font-weight: bold;
+             color: var(--primary-color);
+         }
+
+
+        .signature-section {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px; /* Reduced margin */
+            padding-top: 15px; /* Reduced padding */
+            border-top: 1px solid var(--secondary-color);
+             flex-wrap: wrap;
+        }
+        .logo-text-placeholder {
+            font-size: 25px; /* Adjust size as needed */
+            font-weight: bold;
+            color: #0015ff; /* Darker text */
+            margin-bottom: 10px; /* Space below the text */
+            /* Match the dimensions of the logo container roughly for layout consistency */
+            width: 150px;
+            height: 50px;
+            display: flex; /* Use flexbox to center text vertically */
+            justify-content: center; /* Center text horizontally */
+            align-items: center; /* Center text vertically */
+            text-align: center; /* Ensure text is centered if it wraps */
+        }
+
+        .signature-box {
+            flex: 1;
+            text-align: center;
+            margin: 0 15px; /* Reduced margin */
+             min-width: 180px; /* Adjusted min-width */
+        }
+        .signature-line {
+            display: block;
+            width: 80%;
+            margin: 15px auto 5px auto; /* Reduced margin */
+            border-bottom: 1px solid #000;
+        }
+        .terms {
+             margin-top: 20px; /* Reduced margin */
+             font-size: 11px; /* Smaller font */
+             color: #555;
+        }
+        .terms h4 {
+            margin-bottom: 8px; /* Reduced margin */
+            color: #333;
+             font-size: 15px; /* Adjusted font size */
+        }
+         .terms p {
+             margin-bottom: 3px; /* Reduced margin */
+         }
+        .footer-section {
+            text-align: center;
+            font-size: 11px; /* Smaller font */
+            color: #777;
+            margin-top: 20px; /* Reduced margin */
+            border-top: 1px solid var(--secondary-color);
+            padding-top: 8px; /* Reduced padding */
+        }
+
+         /* Page breaks for printing */
+        @media print {
+             .section {
+                 page-break-inside: avoid;
+             }
+             .table {
+                 page-break-inside: auto;
+             }
+             .summary-totals {
+                 page-break-before: avoid;
+             }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="section header-section">
+            <div class="header-content">
+                 <div class="header-left">
+                    {# --- Logo or Name Display --- #}
+                    {% if logo_url %}
+                        {# Display the logo image if URL is provided #}
+                        <img src="{{ logo_url }}" alt="Company Logo" class="logo">
+                    {% elif user_profile.company_name %}
+                        {# If no logo, display the Company Name + Ventures as an H1 if available #}
+                        <h2 class="color:'blue'">
+                             {{ user_profile.company_name }} 
+                        </h2>
+                    {% elif user_profile.representative_name %}
+                         {# If no logo or company name, display the Representative Name + Ventures as an H1 if available #}
+                         <h2 class="color:'blue'">
+                              {{ user_profile.representative_name }} Ventures
+                         </h2>
+                     {% elif customer_name %} {# Less likely for sender branding, but included based on previous logic #}
+                         {# If no logo, company name, or rep name, use customer name + Ventures as an H1 #}
+                          <h2 class="color:'blue'">
+                              {{ customer_name }} Ventures
+                          </h2>
+                    {% else %}
+                        {# Fallback if no logo, company name, representative name, or customer name is available #}
+                        <h2 class="color:'blue'">
+                             [ Your Business Name ] {# Changed placeholder text #}
+                        </h2>
+                    {% endif %}
+                    {# --- End Logo or Name Display --- #}
+
+                    <p class="powered-by">Powered by TileNet</p>
+                </div>
+                <div class="header-right">
+                     <h1>Estimate</h1>
+                    {# Assuming user_profile is passed and has these attributes #}
+                     <p class="info-pair"><span class="label">Estimate No:</span> {{ estimate_number|default:"[Estimate Number]" }}</p>
+                     <p class="info-pair"><span class="label">Date:</span> {{ project_date|date:"Y-m-d"|default:"[Date]" }}</p> {# Format the date #}
+                     <p class="info-pair"><span class="label">Project Name:</span> {{ project_name|default:"[Project Name]" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section info-section">
+             <div class="section-content"> {# Added inner content wrapper for padding/border #}
+                <div class="info-content">
+                    <div class="info-left">
+                        <h2>Bill To</h2>
+                        {# Use customer info from context_data, which prioritizes payload data #}
+                        <p class="info-pair"><span class="label">Name:</span> {{ customer_name|default:"[Client Name]" }}</p>
+                        <p class="info-pair"><span class="label">Location:</span> {{ location|default:"[Client Location]" }}</p>
+                        <p class="info-pair"><span class="label">Phone:</span> {{ contact|default:"[Client Contact]" }}</p>
+                    </div>
+                    <div class="info-right">
+                        <h2>From</h2> {# Label for your company info #}
+                         <p class="info-pair"><span class="label">Company:</span> {{ user_profile.company_name|default:"[Company Name]" }}</p>
+                         <p class="info-pair"><span class="label">Address:</span> {{ user_profile.address|default:"[Company Address]" }}</p>
+                         {% if user_profile.email %}<p class="info-pair"><span class="label">Email:</span> {{ user_profile.email }}</p>{% endif %}
+                         <p class="info-pair"><span class="label">Phone:</span> {{ user_profile.phone_number|default:"[Company Phone]" }}</p>
+                         {# Add website etc. if available on user_profile #}
+                         {% if user_profile.website %}<p class="info-pair"><span class="label">Website:</span> {{ user_profile.website }}</p>{% endif %}
+                    </div>
+                </div>
+                {# Add project description if needed #}
+                {% comment %} Assuming 'description' is passed in context_data from ProjectSerializer {% endcomment %}
+                {% if description %}
+                    <div style="margin-top: 15px;">
+                        <span class="label" style="min-width: auto;">Description:</span>
+                        <p>{{ description|default:"No description provided."|linebreaksbr }}</p> {# Use linebreaksbr filter #}
+                    </div>
+                {% endif %}
+            </div> {# End section-content #}
+        </div>
+
+        <div class="section details-section">
+            <div class="section-content"> {# Added inner content wrapper #}
+                <h2>Room Measurements</h2>
+                {# The 'rooms' variable is a list of serialized Room objects #}
+                {% if rooms %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Room Name</th>
+                            {# Removed Type, Length, Breadth, Height columns #}
+                            <th>Floor Area (m²)</th>
+                            <th>Wall Area (m²)</th>
+                             {# Removed Total Area column from room breakdown as it's less relevant to customer #}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for room in rooms %}
+                        <tr>
+                            {# room_type is the slug, assuming you want the slug. If display name is needed, you might need to add it to the serializer #}
+                            <td>{{ room.name|default:"[Room Name]" }}</td> {# Display room name #}
+                            {# Removed Type, Length, Breadth, Height cells #}
+                            {# Use calculated fields from Room object, ensure they are Decimal in backend and formatted here #}
+                            <td>{{ room.floor_area|default:0|floatformat:2 }}</td>
+                            <td>{{ room.wall_area|default:0|floatformat:2 }}</td>
+                        </tr>
+                        
+                        {% endfor %}
+                    </tbody>
+                     <tfoot>
+                         <tr>
+                             {# total_area from Project model represents the sum for estimation #}
+                             <td colspan="2" style="text-align: right;">Total Area for Estimation:</td> {# Adjusted colspan #}
+                             <td>{{ total_area|default:0|floatformat:2 }} m²</td>
+                         </tr>
+                     </tfoot>
+                </table>
+                {% else %}
+                    <p>No room details available for this project.</p>
+                {% endif %}
+            </div> {# End section-content #}
+        </div>
+
+        <div class="section details-section">
+             <div class="section-content"> {# Added inner content wrapper #}
+                <h2>Materials Summary</h2>
+                {# The 'materials' variable is a list of serialized ProjectMaterial objects #}
+                {% if materials %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item</th> {# Changed from # to Item #}
+                            <th>Description</th> {# Changed from Material Name #}
+                            <th>Unit</th> {# Added Unit #}
+                            
+                            <th>Quantity Needed</th> {# This is quantity_with_wastage #}
+                           
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in materials %}
+                        <tr>
+                            {# Access fields from ProjectMaterialSerializer output #}
+                            <td>{{ forloop.counter }}</td> {# Use forloop.counter for item number #}
+                            <td>{{ item.name|default:"[Material Name]" }}</td>
+                            {# Access nested unit abbreviation from the serialized Material object within ProjectMaterial #}
+                            <td>{{ item.material.unit.abbreviation|default:"N/A" }}</td> {# Added Unit #}
+                            
+                            {# Use calculated field quantity_with_wastage #}
+                            <td>{{ item.quantity_with_wastage|default:0|floatformat:2 }}</td>
+                            {# Use calculated field total_price #}
+                            
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- <tfoot>
+                        <tr>
+                            <td colspan="5" style="text-align: right;">Total Material Cost:</td> {# Adjusted colspan #}
+                            <td>{{ total_material_cost|default:0|floatformat:2 }}</td> {# Use calculated field from Project #}
+                        </tr>
+                    </tfoot> -->
+                </table>
+                {% else %}
+                    <p>No materials added to this project.</p>
+                {% endif %}
+            </div> {# End section-content #}
+        </div>
+
+
+        <div class="section summary-section">
+             <div class="section-content"> {# Added inner content wrapper #}
+                <h2 class="background-color:'blue' , color:'white'">Estimate Summary</h2>
+                 <div class="summary-totals">
+                     <!-- <div class="summary-row">
+                         <span class="summary-label">Subtotal (Materials + Labour):</span>
+                         <span class="summary-value">GH₵{{ subtotal_cost|default:0|floatformat:2 }}</span>
+                     </div> -->
+                    
+                      {# Moved Total Labour Cost here, outside profit condition #}
+                     <div class="summary-row">
+                          <span class="summary-label">Cost Per Area:</span> {# Label adjusted #}
+                          <span class="summary-value"> GH₵{{ cost_per_area|default:0|floatformat:2 }} / m²</span>
+                      </div>
+                     {% if wastage_percentage and wastage_percentage > 0 %}
+                         <div class="summary-row">
+                             <span class="summary-label">Wastage Percentage:</span>
+                             <span class="summary-value">{{ wastage_percentage|default:0|floatformat:"g" }}%</span>
+                         </div>
+                     {% endif %}
+                     
+                     {# Display transport cost if greater than 0 #}
+                     {% if transport and transport > 0 %}
+                         <div class="summary-row">
+                             <span class="summary-label">Transport Cost:</span>
+                             <span class="summary-value">GH₵{{ transport|default:0|floatformat:2 }}</span>
+                         </div>
+                     {% endif %}
+
+                     {# GRAND TOTAL - Calculate in view and pass as grand_total #}
+                     {# This assumes grand_total = subtotal_cost + profit + transport #}
+                     <div class="summary-row grand-total-row">
+                         <span class="summary-label">Total Labour Cost:</span>
+                         <span class="summary-value">GH₵{{ total_labor_cost|default:0|floatformat:2 }}</span>
+                     </div>
+                 </div>
+
+                 {# Other Summary Info like Estimated Days, Cost Per Area #}
+                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--secondary-color);">
+                     <p class="info-pair"><span class="label">Estimated Days:</span> {{ estimated_days|default:0 }}</p>
+                      
+                      {% if total_area and total_area > 0 %}
+                         <p class="info-pair"><span class="label">Total Area Calculated:</span> {{ total_area|default:0|floatformat:2 }} {{ measurement_unit|default:"m" }}²</p>
+                      {% endif %}
+                 </div>
+
+            </div> {# End section-content #}
+        </div>
+
+
+        <div class="section signature-section">
+            <div class="signature-box">
+                <span class="signature-line"></span>
+                <span>Customer Name (Signature)</span>
+            </div>
+            <div class="signature-box">
+                <span class="signature-line"></span>
+                {# Assuming user_profile has a representative name field or use company name #}
+                <span>{{ user_profile.representative_name|default:user_profile.company_name|default:"Representative Name" }} (Signature)</span>
+            </div>
+        </div>
+
+        <div class="section terms">
+             <div class="section-content"> {# Added inner content wrapper #}
+                 <h4>Terms and Conditions</h4>
+                 {# Add validity_days to context or settings, or use a default #}
+                 <p>1. This estimate is valid for {{ validity_days|default:30 }} days from the issue date.</p>
+                 <p>2. Any work requested outside the scope of this estimate will be billed separately.</p>
+                 <p>3. Payment terms are as specified in the payment section. Timely payment is appreciated.</p>
+                 <p>4. [Add other relevant terms]</p>
+             </div> {# End section-content #}
+             <div style="text-align: center; margin-top: 15px; font-size: 10px; color: #ffffff; background-color: rgb(65, 65, 250);">
+                 Powered by TileNet
+             </div>
+        </div>
+
+        <div class="footer-section">
+            &copy; {{ project_date|date:"Y"|default:"" }} {{ user_profile.company_name|default:"Your Company" }}. All rights reserved.
+        </div>
+
+    </div>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Estimate - {{ estimate_number|default:"[Estimate Number]" }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@600&display=swap" rel="stylesheet">
+    <style>
+        /* --- CSS Variables for Easy Customization --- */
+        :root {
+            --primary-color: {{ primary_color|default:"#1a73e8" }}; /* A more vibrant blue */
+            --secondary-color: #e0e0e0; /* Softer grey for borders */
+            --accent-color: #f2f2f2; /* Light background for striped rows/footers */
+            --text-color: #343a40; /* Dark charcoal for general text */
+            --light-text-color: #6c757d; /* Muted grey for secondary text */
+            --border-radius: 8px;
+            --padding-md: 15px;
+            --padding-lg: 25px;
+        }
+
+        /* --- General Body Styles --- */
+        body {
+            font-family: 'Lato', sans-serif; /* Modern, readable sans-serif font */
+            margin: 0;
+            padding: var(--padding-lg); /* Generous padding around the document */
+            line-height: 1.6; /* Improved line spacing for readability */
+            color: var(--text-color);
+            background-color: #f8f9fa; /* A very light grey background for subtle depth */
+            -webkit-print-color-adjust: exact; /* Ensures background colors print */
+        }
+
+        /* --- Container for Document Width --- */
+        .container {
+            width: 210mm; /* A4 width for consistent printing */
+            max-width: 800px; /* Max width for digital viewing */
+            margin: 0 auto;
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Subtle shadow for a lifted effect */
+            border-radius: var(--border-radius);
+            padding: var(--padding-lg);
+            box-sizing: border-box; /* Include padding in the width */
+        }
+
+        /* --- Section Styling --- */
+        .section {
+            margin-bottom: 25px; /* Increased space between sections */
+        }
+
+        .section-content {
+            padding: var(--padding-md);
+            border: 1px solid var(--secondary-color);
+            border-radius: var(--border-radius);
+            background-color: #fff; /* Explicitly white background inside sections */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow for inner content */
+        }
+
+        /* --- Header Section --- */
+        .header-section {
+            margin-bottom: 30px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--primary-color); /* Thicker primary color underline */
+        }
+
+        .header-left, .header-right, .info-left, .info-right {
+            flex: 1;
+            min-width: 250px; /* Adjusted minimum width for better wrapping */
+            margin-right: 30px; /* More space between columns */
+        }
+        .header-right, .info-right {
+            margin-right: 0;
+            text-align: right;
+        }
+
+        .logo {
+            max-width: 150px; /* Slightly larger logo */
+            height: auto;
+            margin-bottom: 10px;
+            display: block; /* Ensures image behaves as a block for margin */
+        }
+        .logo-text-placeholder {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 30px; /* Larger text */
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            padding: 10px 0;
+            border-bottom: 2px solid var(--secondary-color);
+            display: block;
+            text-align: left;
+        }
+
+        /* --- Headings --- */
+        h1 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--primary-color);
+            font-size: 36px; /* Larger heading */
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        h2 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--text-color);
+            font-size: 22px; /* Adjusted subheading size */
+            border-bottom: 1px solid var(--secondary-color);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            margin-top: 0;
+            font-weight: 600;
+        }
+        h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        h4 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        /* --- Info Pairs (Label/Value) --- */
+        .info-pair {
+            margin-bottom: 8px;
+            font-size: 15px;
+            color: var(--light-text-color);
+            display: flex; /* Use flexbox for consistent alignment */
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .info-pair .label {
+            font-weight: 700; /* Bolder label */
+            color: var(--text-color);
+            flex-shrink: 0; /* Prevent label from shrinking */
+            min-width: 130px; /* Slightly wider label width for alignment */
+            text-align: left;
+            margin-right: 10px;
+        }
+        .info-pair span:not(.label) {
+            flex-grow: 1; /* Allow value to take remaining space */
+            text-align: right;
+        }
+        .info-left .info-pair span:not(.label) {
+            text-align: left;
+        }
+
+        /* --- Table Styling --- */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .table th, .table td {
+            border: 1px solid var(--secondary-color);
+            padding: 12px; /* Increased padding for better spacing */
+            text-align: left;
+            font-size: 14px;
+        }
+        .table th {
+            background-color: var(--primary-color);
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            white-space: nowrap; /* Prevent headers from wrapping */
+        }
+        .table td {
+            text-align: center;
+        }
+        .table td:first-child { /* Align first column (item name) left */
+            text-align: left;
+        }
+        .table td:nth-child(2) { /* Align description left */
+            text-align: left;
+        }
+        .table tbody tr:nth-child(even) {
+            background-color: var(--accent-color); /* Lighter accent color for stripes */
+        }
+        .table tfoot td {
+            font-weight: bold;
+            background-color: #eee; /* Slightly darker footer background */
+            text-align: right;
+        }
+        .table tfoot td:last-child {
+            text-align: center; /* Align total value under quantity */
+            font-size: 16px;
+            color: var(--primary-color);
+        }
+        .table tfoot td:first-child {
+            text-align: right; /* Ensure label is right aligned */
+        }
+
+        /* --- Detail Sections (Room/Worker) --- */
+        .room-detail-section, .worker-detail-section {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+            font-size: 13px;
+            color: var(--light-text-color);
+            text-align: left;
+            line-height: 1.4;
+        }
+        .room-detail-section h4, .worker-detail-section h4 {
+            margin-bottom: 5px;
+            color: var(--text-color);
+            font-size: 15px;
+        }
+
+        /* --- Summary Totals --- */
+        .summary-section .section-content h2 {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 12px var(--padding-md);
+            margin: calc(-1 * var(--padding-md)) calc(-1 * var(--padding-md)) var(--padding-md) calc(-1 * var(--padding-md)); /* Extend background to edges */
+            border-radius: var(--border-radius) var(--border-radius) 0 0; /* Only top corners rounded */
+            border-bottom: none;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .summary-totals {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--secondary-color);
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .summary-row .summary-label {
+            font-weight: 700;
+            color: var(--text-color);
+        }
+        .summary-row .summary-value {
+            font-weight: 600;
+            color: var(--primary-color); /* Use primary color for values */
+        }
+        .grand-total-row {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--primary-color); /* Stronger border for grand total */
+            font-size: 24px; /* Larger font for grand total */
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .grand-total-row .summary-value {
+            font-size: 26px; /* Even larger value for grand total */
+            color: var(--primary-color);
+        }
+
+        /* --- Signature Section --- */
+        .signature-section {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--secondary-color);
+            flex-wrap: wrap;
+        }
+        .signature-box {
+            flex: 1;
+            text-align: center;
+            margin: 0 20px;
+            min-width: 200px;
+            padding-top: 10px;
+        }
+        .signature-line {
+            display: block;
+            width: 85%;
+            margin: 25px auto 8px auto; /* Space for signature above line */
+            border-bottom: 1px solid var(--text-color); /* Darker line */
+        }
+        .signature-box span {
+            font-size: 14px;
+            color: var(--light-text-color);
+        }
+
+        /* --- Terms and Conditions --- */
+        .terms {
+            margin-top: 30px;
+            font-size: 12px;
+            color: var(--light-text-color);
+        }
+        .terms h4 {
+            margin-bottom: 10px;
+            color: var(--text-color);
+            font-size: 17px;
+            text-align: center; /* Centered terms heading */
+        }
+        .terms p {
+            margin-bottom: 5px;
+            text-align: justify; /* Justify terms text */
+        }
+
+        /* --- Powered By & Footer --- */
+        .powered-by-footer {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 10px;
+            color: #fff;
+            background-color: var(--primary-color);
+            padding: 8px 0;
+            border-radius: 0 0 var(--border-radius) var(--border-radius); /* Rounded bottom corners */
+            margin-left: calc(-1 * var(--padding-lg)); /* Adjust to align with container edges */
+            margin-right: calc(-1 * var(--padding-lg));
+            margin-bottom: calc(-1 * var(--padding-lg));
+        }
+
+
+        .footer-section {
+            text-align: center;
+            font-size: 12px;
+            color: var(--light-text-color);
+            margin-top: 20px; /* More space above footer */
+            padding-top: 10px;
+            border-top: 1px solid var(--secondary-color);
+        }
+
+        /* --- Print Optimization --- */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #fff;
+            }
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+                padding: 15mm; /* Consistent print margins */
+                width: auto; /* Let print engine handle width */
+                max-width: none;
+            }
+            .section, .section-content {
+                box-shadow: none;
+                border: none; /* Remove shadows and borders for print */
+                margin-bottom: 15px; /* Reduce space slightly for print */
+                padding: 0;
+            }
+            .section-content {
+                padding: 0;
+            }
+            .header-content, .info-content {
+                padding-bottom: 10px;
+            }
+            .table th, .table td {
+                border: 1px solid #ccc; /* Lighter borders for print tables */
+                padding: 8px;
+            }
+            .table tbody tr:nth-child(even) {
+                background-color: #f0f0f0; /* Lighter stripes for print */
+            }
+            .summary-section .section-content h2 {
+                background-color: var(--primary-color) !important; /* Force primary color print */
+                color: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 8px var(--padding-md);
+            }
+            .powered-by-footer {
+                background-color: var(--primary-color) !important; /* Force primary color print */
+                color: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .signature-section {
+                margin-top: 25px;
+            }
+            .terms {
+                margin-top: 20px;
+            }
+
+            /* Page breaks */
+            .section {
+                page-break-inside: avoid;
+            }
+            .table {
+                page-break-inside: auto;
+            }
+            .summary-totals {
+                page-break-before: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="section header-section">
+            <div class="header-content">
+                <div class="header-left">
+                    {# --- Logo or Name Display --- #}
+                    {% if logo_url %}
+                        <img src="{{ logo_url }}" alt="Company Logo" class="logo">
+                    {% elif user_profile.company_name %}
+                        <span class="logo-text-placeholder">{{ user_profile.company_name }}</span>
+                    {% elif user_profile.representative_name %}
+                        <span class="logo-text-placeholder">{{ user_profile.representative_name }}</span>
+                    {% else %}
+                        <span class="logo-text-placeholder">[ Your Business Name ]</span>
+                    {% endif %}
+                    {# --- End Logo or Name Display --- #}
+                </div>
+                <div class="header-right">
+                    <h1>Estimate</h1>
+                    <p class="info-pair"><span class="label">Estimate No:</span> <span>{{ estimate_number|default:"[Estimate Number]" }}</span></p>
+                    <p class="info-pair"><span class="label">Date:</span> <span>{{ project_date|date:"Y-m-d"|default:"[Date]" }}</span></p>
+                    <p class="info-pair"><span class="label">Project Name:</span> <span>{{ project_name|default:"[Project Name]" }}</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section info-section">
+            <div class="section-content">
+                <div class="info-content">
+                    <div class="info-left">
+                        <h2>Bill To</h2>
+                        <p class="info-pair"><span class="label">Name:</span> <span>{{ customer_name|default:"[Client Name]" }}</span></p>
+                        <p class="info-pair"><span class="label">Location:</span> <span>{{ location|default:"[Client Location]" }}</span></p>
+                        <p class="info-pair"><span class="label">Phone:</span> <span>{{ contact|default:"[Client Contact]" }}</span></p>
+                    </div>
+                    <div class="info-right">
+                        <h2>From</h2>
+                        <p class="info-pair"><span class="label">Company:</span> <span>{{ user_profile.company_name|default:"[Company Name]" }}</span></p>
+                        <p class="info-pair"><span class="label">Address:</span> <span>{{ user_profile.address|default:"[Company Address]" }}</span></p>
+                        {% if user_profile.email %}<p class="info-pair"><span class="label">Email:</span> <span>{{ user_profile.email }}</span></p>{% endif %}
+                        <p class="info-pair"><span class="label">Phone:</span> <span>{{ user_profile.phone_number|default:"[Company Phone]" }}</span></p>
+                        {% if user_profile.website %}<p class="info-pair"><span class="label">Website:</span> <span>{{ user_profile.website }}</span></p>{% endif %}
+                    </div>
+                </div>
+                {% if description %}
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--secondary-color);">
+                        <span class="label" style="display: block; margin-bottom: 5px; font-size: 16px; font-weight: 700; color: var(--text-color);">Description:</span>
+                        <p style="margin: 0; color: var(--light-text-color);">{{ description|default:"No description provided."|linebreaksbr }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section details-section">
+            <div class="section-content">
+                <h2>Room Measurements</h2>
+                {% if rooms %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Room Name</th>
+                            <th>Floor Area ({{ measurement_unit|default:"m" }}²)</th>
+                            <th>Wall Area ({{ measurement_unit|default:"m" }}²)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for room in rooms %}
+                        <tr>
+                            <td>{{ room.name|default:"[Room Name]" }}</td>
+                            <td>{{ room.floor_area|default:0|floatformat:2 }}</td>
+                            <td>{{ room.wall_area|default:0|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" style="text-align: right;">Total Area for Estimation:</td>
+                            <td>{{ total_area|default:0|floatformat:2 }} {{ measurement_unit|default:"m" }}²</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                {% else %}
+                    <p>No room details available for this project.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section details-section">
+            <div class="section-content">
+                <h2>Materials Summary</h2>
+                {% if materials %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Description</th>
+                            <th>Unit</th>
+                            <th>Unit Price (GH₵)</th>
+                            <th>Quantity Needed</th>
+                            <th>Total Cost (GH₵)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in materials %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.name|default:"[Material Name]" }}</td>
+                            <td>{{ item.material.unit.abbreviation|default:"N/A" }}</td>
+                            <td>{{ item.unit_price|default:0|floatformat:2 }}</td>
+                            <td>{{ item.quantity_with_wastage|default:0|floatformat:2 }}</td>
+                            <td>{{ item.total_price|default:0|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" style="text-align: right;">Total Material Cost:</td>
+                            <td>{{ total_material_cost|default:0|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                {% else %}
+                    <p>No materials added to this project.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section summary-section">
+            <div class="section-content">
+                <h2>Estimate Summary</h2>
+                <div class="summary-totals">
+                    <div class="summary-row">
+                        <span class="summary-label">Total Material Cost:</span>
+                        <span class="summary-value">GH₵{{ total_material_cost|default:0|floatformat:2 }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Labour Cost:</span>
+                        <span class="summary-value">GH₵{{ total_labor_cost|default:0|floatformat:2 }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Subtotal (Materials + Labour):</span>
+                        <span class="summary-value">GH₵{{ subtotal_cost|default:0|floatformat:2 }}</span>
+                    </div>
+                    {% if wastage_percentage and wastage_percentage > 0 %}
+                        <div class="summary-row">
+                            <span class="summary-label">Wastage Percentage:</span>
+                            <span class="summary-value">{{ wastage_percentage|default:0|floatformat:"g" }}%</span>
+                        </div>
+                    {% endif %}
+                    {% if transport and transport > 0 %}
+                        <div class="summary-row">
+                            <span class="summary-label">Transport Cost:</span>
+                            <span class="summary-value">GH₵{{ transport|default:0|floatformat:2 }}</span>
+                        </div>
+                    {% endif %}
+                    {% if profit and profit > 0 %}
+                        <div class="summary-row">
+                            <span class="summary-label">Profit Margin:</span>
+                            <span class="summary-value">GH₵{{ profit|default:0|floatformat:2 }}</span>
+                        </div>
+                    {% endif %}
+
+                    <div class="summary-row grand-total-row">
+                        <span class="summary-label">GRAND TOTAL:</span>
+                        <span class="summary-value">GH₵{{ grand_total|default:0|floatformat:2 }}</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--secondary-color);">
+                    <p class="info-pair"><span class="label">Estimated Days:</span> <span>{{ estimated_days|default:0 }} days</span></p>
+                    {% if cost_per_area and cost_per_area > 0 %}
+                        <p class="info-pair"><span class="label">Cost Per Area:</span> <span>GH₵{{ cost_per_area|default:0|floatformat:2 }} / {{ measurement_unit|default:"m" }}²</span></p>
+                    {% endif %}
+                    {% if total_area and total_area > 0 %}
+                        <p class="info-pair"><span class="label">Total Area Calculated:</span> <span>{{ total_area|default:0|floatformat:2 }} {{ measurement_unit|default:"m" }}²</span></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="section signature-section">
+            <div class="signature-box">
+                <span class="signature-line"></span>
+                <span>Customer Name (Signature)</span>
+            </div>
+            <div class="signature-box">
+                <span class="signature-line"></span>
+                <span>{{ user_profile.representative_name|default:user_profile.company_name|default:"Representative Name" }} (Signature)</span>
+            </div>
+        </div>
+
+        <div class="section terms">
+            <div class="section-content">
+                <h4>Terms and Conditions</h4>
+                <p>1. This estimate is valid for {{ validity_days|default:30 }} days from the issue date.</p>
+                <p>2. Any work requested outside the scope of this estimate will be billed separately and agreed upon in advance.</p>
+                <p>3. Payment terms are as specified in the payment section. A deposit of {{ deposit_percentage|default:"[XX]" }}% may be required to commence work. Timely payment of balances is appreciated.</p>
+                <p>4. Prices are subject to change if material costs or labor rates fluctuate significantly after the validity period.</p>
+                <p>5. [Add any other relevant terms specific to your business operations.]</p>
+            </div>
+        </div>
+
+        <div class="powered-by-footer">
+            Powered by TileNet
+        </div>
+
+        <div class="footer-section">
+            &copy; {{ project_date|date:"Y"|default:"" }} {{ user_profile.company_name|default:"Your Company" }}. All rights reserved.
+        </div>
+
+    </div>
+</body>
+</html> -->
