@@ -31,14 +31,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # # Third-party apps
-    # 'rest_framework',
-    # 'rest_framework.authtoken',  # Added for token authentication
-    # 'corsheaders',
-    # 'phonenumber_field',
+    # Third-party apps
+    'rest_framework',
+    'rest_framework.authtoken',  # Added for token authentication
+    'corsheaders',
+    'phonenumber_field',
     
     # # Custom apps
-     'accounts',
+     #'accounts',
     # 'estimates',
     # 'subscriptions',
     # 'suppliers',
