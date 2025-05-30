@@ -5,7 +5,7 @@ import sys
 from django.core.wsgi import get_wsgi_application
 
 try:
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project_name.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tile_estimator.settings')
     application = get_wsgi_application()
 except Exception as e:
     # Log the full traceback to stderr
