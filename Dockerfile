@@ -22,7 +22,6 @@ WORKDIR /app
 # Copy code
 COPY . .
 
-# Set up virtualenv and install dependencies
 RUN python3.13 -m venv /app/venv && \
     . /app/venv/bin/activate && \
     pip install --upgrade pip && \
@@ -32,6 +31,4 @@ RUN python3.13 -m venv /app/venv && \
 EXPOSE 8000
 RUN . /app/venv/bin/activate && python manage.py collectstatic --noinput
 
-
-# Run the app
 CMD ["/app/venv/bin/gunicorn", "tile_estimator.wsgi:application", "--bind", "0.0.0.0:8000", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-"]
