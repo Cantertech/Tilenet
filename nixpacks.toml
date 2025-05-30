@@ -5,7 +5,12 @@ nixPkgs = [
   "python311Packages.virtualenv",
   "gcc",
   "libffi",
-  "pkg-config"
+  "pkg-config",
+  "cairo",         # For 2D graphics rendering
+  "pango",         # For text layout and rendering
+  "gdk-pixbuf",    # For image loading (e.g., PNG, JPEG)
+  "glib",          # Core GLib library, often a dependency for GTK-based apps
+  "gtk3"           # GTK+ 3, which bundles many of these
 ]
 
 [phases.install]
