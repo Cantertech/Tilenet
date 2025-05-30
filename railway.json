@@ -1,6 +1,11 @@
 {
   "build": {
-     "builder": "DOCKERFILE"
+    "dockerfilePath": "Dockerfile"
   },
-  "start": "gunicorn tile_estimator.wsgi:application"
+  "start": "gunicorn tile_estimator.wsgi:application",
+  "deploy": {
+    "restartPolicyType": "ALWAYS",
+    "healthcheckPath": "/",
+    "port": 8000
+  }
 }
