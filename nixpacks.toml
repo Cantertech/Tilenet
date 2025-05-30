@@ -6,11 +6,12 @@ nixPkgs = [
   "gcc",
   "libffi",
   "pkg-config",
-  "cairo",         # For 2D graphics rendering
-  "pango",         # For text layout and rendering
-  "gdk-pixbuf",    # For image loading (e.g., PNG, JPEG)
-  "glib",          # Core GLib library, often a dependency for GTK-based apps
-  "gtk3"           # GTK+ 3, which bundles many of these
+  "cairo",
+  "pango",
+  "gdk-pixbuf",
+  "glib",          # Keep this, it's the core GLib
+  "gtk3",          # Keep this, it pulls in many related libs
+  "gobject"        # Explicitly add gobject
 ]
 
 [phases.install]
