@@ -6,6 +6,7 @@ Django settings for tile_estimator project.
 from datetime import timedelta
 import os
 from pathlib import Path
+import dj_database_url
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -20,8 +21,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-key-for-development-only')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'tilnet.up.railway.app']
+CSRF_TRUSTED_ORIGINS= ['https://tilnet.up.railway.app']
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -81,12 +82,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'tile_estimator.wsgi.application'
 
 # Database
-import dj_database_url
-
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600,  # keeps DB connections alive for performance
+        ssl_require=False  # for Railway internal DB (you can set to True for public connect)
+    )
 }
-
 
 # Custom user model
 AUTH_USER_MODEL = 'accounts.CustomUser'
