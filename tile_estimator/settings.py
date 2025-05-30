@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     # 'phonenumber_field',
     
     # # Custom apps
-    # 'accounts',
+     'accounts',
     # 'estimates',
     # 'subscriptions',
     # 'suppliers',
