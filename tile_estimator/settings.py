@@ -214,3 +214,9 @@ SUBSCRIPTION_PLANS = {
                      'advanced_analytics', 'team_access', 'api_access', 'priority_support'],
     },
 }
+
+
+# settings.py (at the very bottom of the file)
+import logging
+logger = logging.getLogger(__name__)
+logger.info("Django settings loaded successfully.") # Add this line
