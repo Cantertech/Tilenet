@@ -9,10 +9,12 @@ from django.conf.urls.static import static
 from django.http import HttpResponse
 from django.urls import path
 
+import logging
+logger = logging.getLogger(__name__)
 
 def health_check(request):
+    logger.info("Health check called")
     return HttpResponse("OK")
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),

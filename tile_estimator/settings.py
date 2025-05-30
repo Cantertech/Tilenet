@@ -175,6 +175,20 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
+
+LOGGING = {
+    "version": 1,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
 # Subscription plan settings for freemium model
 SUBSCRIPTION_PLANS = {
     'free': {
