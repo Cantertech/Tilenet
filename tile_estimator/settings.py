@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'projects',  # Projects app
     'manual_estimate',
 ]
+# your_project_name/settings.py
+ROOT_URLCONF = 'tile_estimator.urls'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
