@@ -9,9 +9,8 @@ nixPkgs = [
   "cairo",
   "pango",
   "gdk-pixbuf",
-  "glib",          # Keep this, it's the core GLib
-  "gtk3",          # Keep this, it pulls in many related libs
-  "gobject"        # Explicitly add gobject
+  "glib",          # Contains libgobject-2.0-0
+  "gtk3"           # Also pulls in many related libs
 ]
 
 [phases.install]

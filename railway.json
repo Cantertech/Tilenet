@@ -1,6 +1,6 @@
 {
   "build": {
-    "builder": "NIXPACKS"
+     "builder": "DOCKERFILE"
   },
   "start": "gunicorn tile_estimator.wsgi:application"
 }
