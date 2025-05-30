@@ -1,12 +1,17 @@
-
-"""
-WSGI config for tile_estimator project.
-"""
-
 import os
+import traceback
+import sys
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tile_estimator.settings')
+try:
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project_name.settings')
+    application = get_wsgi_application()
+except Exception as e:
+    # Log the full traceback to stderr
+    print("--- Django WSGI Application Load Error ---", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
+    print("--- End of Error ---", file=sys.stderr)
 
-application = get_wsgi_application()
+    # Re-raise the exception so Gunicorn still knows the worker failed
+    raise

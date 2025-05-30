@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-key-for-development-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 CSRF_TRUSTED_ORIGINS= ['https://tilnet.up.railway.app']
 # Application definition
@@ -86,8 +86,8 @@ WSGI_APPLICATION = 'tile_estimator.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,  # keeps DB connections alive for performance
-        ssl_require=False  # for Railway internal DB (you can set to True for public connect)
+        conn_max_age=600,
+        conn_health_checks=True, # Good for production
     )
 }
 
@@ -128,18 +128,24 @@ SIMPLE_JWT = {
 }
 
 
-ALLOWED_HOSTS = ['*']
-
+if not DEBUG:
+    ALLOWED_HOSTS = [
+        '.railway.app',  # Allows any subdomain of railway.app
+        'tilnet.up.railway.app', # Specific Railway domain # Add your custom domains if you have them
+    ]
+else:
+    ALLOWED_HOSTS = ['*'] 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
 # os.getenv('AFRICASTALKING_USERNAME')
 # os.getenv('AFRICASTALKING_API_KEY')
-AFRICASTALKING_USERNAME = 'sandbox'
-AFRICASTALKING_API_KEY = 'atsk_71d557824f08ce20d0c822bad15901a5f298f5e864981be47124c7375248fa3cd36e37ce'
-AFRICASTALKING_SHORTCODE = os.getenv('AFRICASTALKING_SHORTCODE', None)
-# Verification Code Expiry (in minutes)
+AFRICASTALKING_USERNAME = os.getenv('AFRICASTALKING_USERNAME', 'sandbox') # Keep sandbox for local
+AFRICASTALKING_API_KEY = os.getenv('AFRICASTALKING_API_KEY', '') # Empty string default is safer
+
+PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY', '')
+PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY', '')
 VERIFICATION_CODE_EXPIRY_MINUTES = 10
 
 LANGUAGE_CODE = 'en-us'
@@ -165,9 +171,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY', '')
 # PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY', '')
 # settings.py
-PAYSTACK_SECRET_KEY = 'sk_test_659dd65655302521bbb4d715ae6d61d36e181be1' # Use your test key first, then live key for production
-PAYSTACK_PUBLIC_KEY = 'pk_test_f465da1a3737444e8ba2405bd0d3f9b7426168bd' # Also add public key for completeness, though not strictly needed on backend
-
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
