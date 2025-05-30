@@ -136,10 +136,7 @@ if not DEBUG:
 else:
     ALLOWED_HOSTS = ['*'] 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-if not DEBUG:
-    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
-# os.getenv('AFRICASTALKING_USERNAME')
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 # os.getenv('AFRICASTALKING_API_KEY')
 AFRICASTALKING_USERNAME = os.getenv('AFRICASTALKING_USERNAME', 'sandbox') # Keep sandbox for local
 AFRICASTALKING_API_KEY = os.getenv('AFRICASTALKING_API_KEY', '') # Empty string default is safer

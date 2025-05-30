@@ -31,4 +31,7 @@ RUN python3.13 -m venv /app/venv && \
 EXPOSE 8000
 RUN . /app/venv/bin/activate && python manage.py collectstatic --noinput
 
+
+# 
+
 CMD ["/app/venv/bin/gunicorn", "tile_estimator.wsgi:application", "--bind", "0.0.0.0:8000", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-"]
