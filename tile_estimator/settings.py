@@ -31,20 +31,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Third-party apps
-    # 'rest_framework',
-    # 'rest_framework.authtoken',  # Added for token authentication
-    # 'corsheaders',
-    # 'phonenumber_field',
+   # Third-party apps
+    'rest_framework',
+    'rest_framework.authtoken',  # Added for token authentication
+    'corsheaders',
+    'phonenumber_field',
     
     # # Custom apps
     'accounts',
-    # 'estimates',
-    # 'subscriptions',
-    # 'suppliers',
-    # 'admin_api',
-    # 'projects',  # Projects app
-    # 'manual_estimate',
+    'estimates',
+    'subscriptions',
+    'suppliers',
+    'admin_api',
+    'projects',  # Projects app
+    'manual_estimate',
 ]
 # your_project_name/settings.py
 ROOT_URLCONF = 'tile_estimator.urls'
