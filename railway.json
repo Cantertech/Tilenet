@@ -1,6 +1,21 @@
 {
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
   "deploy": {
+    "runtime": "V2",
+    "numReplicas": 1,
     "startCommand": "/app/venv/bin/gunicorn tile_estimator.wsgi:application --bind 0.0.0.0:8000 --log-level debug --error-logfile - --access-logfile -",
-    "healthcheckPath": "/"
+    "healthcheckPath": "/",
+    "sleepApplication": false,
+    "multiRegionConfig": {
+      "europe-west4-drams3a": {
+        "numReplicas": 1
+      }
+    },
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
   }
 }
