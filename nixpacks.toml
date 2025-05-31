@@ -9,8 +9,8 @@ nixPkgs = [
   "cairo",
   "pango",
   "gdk-pixbuf",
-  "glib",          # Contains libgobject-2.0-0
-  "gtk3"           # Also pulls in many related libs
+  "glib",             # Contains libgobject-2.0-0
+  "gtk3"              # Also pulls in many related libs
 ]
 
 [phases.install]
@@ -21,4 +21,5 @@ cmds = [
 ]
 
 [start]
-cmd = "/app/venv/bin/gunicorn tile_estimator.wsgi:application"
+# THIS IS THE CRUCIAL CHANGE!
+cmd = "/app/venv/bin/gunicorn tile_estimator.wsgi:application --bind 0.0.0.0:8000 --log-level debug --error-logfile - --access-logfile -"
