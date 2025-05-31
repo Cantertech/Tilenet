@@ -82,15 +82,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'tile_estimator.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True, # Good for production
-    )
-}
+DATABASES = {}
 
+# Directly setting the database using a hardcoded URL from Render
+DATABASES["default"] = dj_database_url.parse(
+    "postgresql://tilenet_project_user:eKUy2GFCpm2VkmbJuHJNWM0hTVlwWPW3@dpg-d0te0qm3jp1c73eg95v0-a.oregon-postgres.render.com/tilenet_project",
+    conn_max_age=600,
+    conn_health_checks=True
+)
 # Custom user model
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
@@ -128,13 +127,11 @@ SIMPLE_JWT = {
 }
 
 
-if not DEBUG:
-    ALLOWED_HOSTS = [
-        '.railway.app',  # Allows any subdomain of railway.app
-        'tilnet.up.railway.app', # Specific Railway domain # Add your custom domains if you have them
-    ]
-else:
-    ALLOWED_HOSTS = ['*'] 
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "tilenet.onrender.com",  # 👈 Add this line
+]
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 # os.getenv('AFRICASTALKING_API_KEY')
