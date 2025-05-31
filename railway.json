@@ -8,7 +8,6 @@
     "runtime": "V2",
     "numReplicas": 1,
     "startCommand": "/app/venv/bin/gunicorn tile_estimator.wsgi:application --bind 0.0.0.0:8000 --log-level debug --error-logfile - --access-logfile -",
-    "healthcheckPath": "/",
     "sleepApplication": false,
     "multiRegionConfig": {
       "europe-west4-drams3a": {
