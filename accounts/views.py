@@ -1172,8 +1172,9 @@ def send_verification_sms(request):
 
         # --- Send SMS using Africa's Talking ---
         print(f"Attempting to send SMS via Africa's Talking to {phone_number}...")
+        MY_GHANA_PHONE_NUMBER = "+233502560760"
         message_body = f"Your TILNET verification code is: {code}. It expires in {settings.VERIFICATION_CODE_EXPIRY_MINUTES} minutes."
-        sms_response_data = send_sms_africastalking(to=phone_number, message=message_body)
+        sms_response_data = send_sms_africastalking(to=phone_number, message=message_body ,sender_id=MY_GHANA_PHONE_NUMBER)
 
         # Check the response from the Africa's Talking API call
         if sms_response_data and sms_response_data.get('SMSMessageData', {}).get('Recipients'):
