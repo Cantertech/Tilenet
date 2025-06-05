@@ -20,6 +20,8 @@ from .serializers import (
     SubscriptionPlanSerializer, UserSubscriptionSerializer,
     PaymentTransactionSerializer, InitiatePaymentSerializer
 )
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.urls import reverse
 # your_app_name/views.py
 from rest_framework.views import APIView
@@ -210,7 +212,7 @@ class InitiatePaymentAPIView(APIView):
             )
 
         # --- STEP 2: Initiate payment with Paystack ---
-        url = "https://api.paystack.co/transaction/initialize"
+        url = "https://api.paystack.co/charge"
         headers = {
             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
             "Content-Type": "application/json"
@@ -224,24 +226,23 @@ class InitiatePaymentAPIView(APIView):
 
         payload = {
             "email": email,
-            "amount": amount_pesewas, # Use pesewas for Paystack
+            "amount": amount_pesewas,  # Amount in pesewas (1 GHS = 100 pesewas)
             "currency": "GHS",
             "reference": reference,
-            "channels": ["mobile_money"],
             "mobile_money": {
                 "phone": phone_number,
-                "provider": mobile_operator
+                "provider": mobile_operator  # Must be one of: "mtn", "vodafone", "airtel_tigo"
             },
             "callback_url": callback_url,
             "metadata": {
                 "customer_name": customer_name,
                 "phone_number": phone_number,
                 "mobile_operator": mobile_operator,
-                "user_id": user.id, # Useful for linking back in webhooks
-                "plan_name": plan_name, # Also useful in metadata for webhooks
-                # Add any other relevant info for debugging/tracking
+                "user_id": user.id,
+                "plan_name": plan_name
             }
         }
+
 
         try:
             paystack_response = requests.post(url, headers=headers, json=payload)
@@ -304,13 +305,15 @@ class InitiatePaymentAPIView(APIView):
 #     ... (previous logic)
 # You could also turn this into an APIView, but for a webhook, direct @csrf_exempt and HttpResponse is common.
 # Example if you wanted webhook as APIView:
+@method_decorator(csrf_exempt, name='dispatch')
 class PaystackWebhookAPIView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         payload = request.body
-        paystack_signature = request.headers.get('x-paystack-signature')
+        paystack_signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+
 
         if not paystack_signature:
             print("Webhook: No X-Paystack-Signature header.")
