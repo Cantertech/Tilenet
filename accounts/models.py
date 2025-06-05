@@ -86,9 +86,9 @@ class UserSubscription(models.Model):
     three_d_views_used = models.PositiveIntegerField(default=0)  
     manual_estimates_used = models.PositiveIntegerField(default=0)  
     is_active = models.BooleanField(default=True)
-    project_limit = models.PositiveBigIntegerField(default=7)
-    three_d_views_limit = models.PositiveBigIntegerField(default=10)
-    manual_estimate_limit = models.PositiveBigIntegerField(default=15)
+    project_limit = models.PositiveBigIntegerField(default=15)
+    three_d_views_limit = models.PositiveBigIntegerField(default=30)
+    manual_estimate_limit = models.PositiveBigIntegerField(default=20)
     payment_status = models.CharField(
         max_length=10,
         choices=[('Paid', 'Paid'), ('Failed', 'Failed'), ('Pending', 'Pending')],
