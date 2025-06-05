@@ -1,7 +1,7 @@
 # payments/utils.py (or at the top of your views.py)
 import re
 
-def format_phone_for_paystack_local(phone_number_str):
+def format_ghanaian_phone_number(phone_number_str):
     """
     Format phone to local Ghanaian number with leading 0, as Paystack expects for mobile_money.phone
     e.g., '+233551234987' or '233551234987' -> '0551234987'

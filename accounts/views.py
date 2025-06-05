@@ -1175,7 +1175,8 @@ def send_verification_sms(request):
         message_body = f"Your TILNET verification code is: {code}. It expires in {settings.VERIFICATION_CODE_EXPIRY_MINUTES} minutes."
         sms_response_data = send_sms_africastalking(to=phone_number, message=message_body)
 
-        # Check the response from the Africa's Talking API call
+        # Check the response from the Africa's Talking API c
+        
         if sms_response_data and sms_response_data.get('SMSMessageData', {}).get('Recipients'):
              # Africa's Talking returns a list of recipients if submission was successful
              print(f"SMS successfully submitted to Africa's Talking for {phone_number}. Response: {sms_response_data}")
