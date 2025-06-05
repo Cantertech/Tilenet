@@ -197,7 +197,7 @@ class InitiatePaymentAPIView(APIView):
         # as the auth happens on the phone. But Paystack requires it, and it's good practice
         # to point to a success page that users can land on.
         # Ensure 'payment_success_page' is defined in your urls.py
-        callback_url = request.build_absolute_uri(reverse('payment_success_page'))
+        callback_url = "https://example.com/success/"
 
         payload = {
             "email": email,
@@ -218,35 +218,38 @@ class InitiatePaymentAPIView(APIView):
             }
         }
 
-
         try:
             paystack_response = requests.post(url, headers=headers, json=payload)
-            paystack_response.raise_for_status()  # Raises HTTPError for 4xx/5xx responses
+            paystack_response.raise_for_status()  # Raise error for HTTP 4xx/5xx
             paystack_data = paystack_response.json()
             print("Payment initialized")
 
-            # Update the payment record with Paystack's initial response
-            payment_record.paystack_response_status = paystack_data.get('status')
-            payment_record.paystack_response_message = paystack_data.get('message', 'No message from Paystack.')
-            
-            paystack_data_status = paystack_data.get('data', {}).get('status')
-            payment_record.paystack_response_status = paystack_data_status  # New: save inner status like "send_otp"
+            data = paystack_data.get('data', {}) or {}
+            api_status = paystack_data.get('status')  # True/False
+            api_message = paystack_data.get('message', 'No message from Paystack.')
+            charge_status = data.get('status')  # e.g. send_otp, success, pending
+            gateway_response = data.get('gateway_response', '')
+            next_action = data.get('next_action', '')
+            display_text = data.get('display_text') or api_message
+
+            payment_record.paystack_response_message = api_message
+            payment_record.paystack_response_status = charge_status
+            payment_record.gateway_response = gateway_response
             payment_record.save()
 
-            print(f"[{reference}] Paystack initialization response received. Status: {paystack_data.get('status')} / Charge Status: {paystack_data_status}")
+            print(f"[{reference}] Paystack response: API status={api_status}, charge_status={charge_status}, next_action={next_action}, gateway_response={gateway_response}")
 
-            if paystack_data.get('status') and paystack_data.get('data'):
-                # Differentiate based on Paystack's internal charge status
-                if paystack_data_status == 'send_otp':
+            if api_status and data:
+                if next_action == 'send_otp' or charge_status == 'send_otp' or 'otp' in gateway_response.lower():
                     return Response({
                         'status': 'otp_required',
-                        'message': 'OTP has been sent. Prompt user to enter it.',
+                        'message': display_text or 'OTP has been sent. Prompt user to enter it.',
                         'data': {
                             'reference': reference
                         }
                     }, status=status.HTTP_200_OK)
 
-                elif paystack_data_status in ['pending', 'success']:
+                elif charge_status in ['pending', 'success']:
                     return Response({
                         'status': 'success',
                         'message': 'Payment initiated. Await confirmation on phone.',
@@ -258,27 +261,26 @@ class InitiatePaymentAPIView(APIView):
                 else:
                     return Response({
                         'status': 'unknown',
-                        'message': f'Unhandled Paystack charge status: {paystack_data_status}',
+                        'message': f'Unhandled Paystack charge status: {charge_status}',
                         'data': {
                             'reference': reference,
-                            'raw_status': paystack_data_status
+                            'raw_status': charge_status
                         }
                     }, status=status.HTTP_200_OK)
 
             else:
-                # Paystack returned status=false or malformed data
+                # Paystack returned false or bad data
                 payment_record.status = 'failed'
-                payment_record.gateway_response = paystack_data.get('message', 'Paystack reported failure during initialization.')
+                payment_record.gateway_response = api_message
                 payment_record.save()
-                print(f"[{reference}] Paystack initialization failed: {paystack_data.get('message')}")
+                print(f"[{reference}] Paystack initialization failed: {api_message}")
                 return Response({
                     'status': 'error',
-                    'message': paystack_data.get('message', 'Failed to initialize payment with Paystack.'),
+                    'message': api_message or 'Failed to initialize payment with Paystack.',
                     'paystack_errors': paystack_data.get('errors')
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except requests.exceptions.RequestException as e:
-            # Handle network or non-2xx HTTP response from Paystack
             print(f"[{reference}] Error communicating with Paystack API: {e}")
             payment_record.status = 'failed'
             payment_record.paystack_response_message = f"Network/API error with Paystack: {e}"
@@ -290,7 +292,6 @@ class InitiatePaymentAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
-            # Catch-all for any unexpected errors
             print(f"[{reference}] Unexpected error during payment initiation: {e}")
             payment_record.status = 'failed'
             payment_record.paystack_response_message = f"Unexpected backend error: {e}"
@@ -300,6 +301,7 @@ class InitiatePaymentAPIView(APIView):
                 'message': 'An unexpected error occurred during payment processing.',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # Webhook view remains largely the same, but you could still use APIView if preferred
 # @csrf_exempt
