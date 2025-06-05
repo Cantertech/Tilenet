@@ -75,7 +75,7 @@ def activate_user_subscription(user_instance, subscription_plan, received_amount
                 user_sub.three_d_views_used = 0
                 user_sub.manual_estimates_used = 0
                 print(f"[{reference}] Subscription renewed. Usage counters reset.")
-                
+
             user_sub.project_limit = subscription_plan.project_limit
             user_sub.three_d_views_limit = subscription_plan.three_d_view_limit
             user_sub.manual_estimate_limit = subscription_plan.manual_estimate_limit
@@ -505,7 +505,7 @@ class AppVersionCheckAPIView(APIView):
         # 1. LATEST_APP_VERSION:
         #    This should be the version number of the *newest* APK you want users to download.
         #    You MUST update this string in your backend code whenever you release a new APK.
-        LATEST_APP_VERSION = "1.0.1" # Example: If your current app is 1.0.0, and this is the new version
+        LATEST_APP_VERSION = "1.0.0" # Example: If your current app is 1.0.0, and this is the new version
 
         # 2. APK_DOWNLOAD_URL:
         #    This is the direct URL where your APK file is hosted.
