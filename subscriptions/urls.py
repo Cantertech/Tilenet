@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import AppVersionCheckAPIView, RequestOTPView, VerifyOTPAndSetPasswordView ,InitiatePaymentAPIView, PaystackWebhookAPIView, check_payment_status
+from .views import AppVersionCheckAPIView, RequestOTPView, VerifyOTPAndSetPasswordView ,InitiatePaymentAPIView, PaystackWebhookAPIView, check_payment_status,verify_paystack_otp
 
 
 router = DefaultRouter()
@@ -18,13 +18,8 @@ urlpatterns = [
     path('paystack-webhook/', PaystackWebhookAPIView.as_view(), name='paystack_webhook'),
     path('payment-success/', views.payment_success_page, name='payment_success_page'), # Name matches view for reverse()
      path('check-payment-status/<str:reference>/', check_payment_status, name='check-payment-status'),
-     path('app-version/', AppVersionCheckAPIView.as_view(), name='app_version_check')
+     path('app-version/', AppVersionCheckAPIView.as_view(), name='app_version_check'),
+     path('verify-paystack-otp/', views.verify_paystack_otp, name='verify_paystack_otp'),
 ]
 
-# {
-#     "amount": 150.75,
-#     "email": "user@example.com",
-#     "phoneNumber": "0241234567",
-#     "mobileOperator": "mtn",
-#     "customerName": "John Doe"
-# }
+

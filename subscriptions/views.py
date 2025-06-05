@@ -305,6 +305,60 @@ class InitiatePaymentAPIView(APIView):
 # @csrf_exempt
 # def paystack_webhook(request):
 #     ... (previous logic)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_paystack_otp(request):
+    user = request.user
+    otp = request.data.get('otp')
+    reference = request.data.get('reference')
+
+    if not otp or not reference:
+        return Response(
+            {'error': 'OTP and reference are required.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        payment = PaymentTransaction.objects.get(reference=reference, user=user)
+    except PaymentTransaction.DoesNotExist:
+        return Response(
+            {'error': 'No matching transaction found for this user and reference.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    url = "https://api.paystack.co/charge/submit_otp"
+    headers = {
+        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "otp": otp,
+        "reference": reference
+    }
+
+    try:
+        paystack_response = requests.post(url, headers=headers, json=payload)
+        paystack_response.raise_for_status()
+        data = paystack_response.json()
+
+        # Optional: update transaction status
+        payment.status = 'otp_submitted'
+        payment.paystack_response_message = data.get('message', '')
+        payment.save()
+
+        return Response({
+            'status': 'success',
+            'message': 'OTP submitted successfully.',
+            'paystack_response': data
+        }, status=status.HTTP_200_OK)
+
+    except requests.exceptions.RequestException as e:
+        return Response({
+            'status': 'error',
+            'message': 'Failed to submit OTP to Paystack.',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 # You could also turn this into an APIView, but for a webhook, direct @csrf_exempt and HttpResponse is common.
 # Example if you wanted webhook as APIView:
 @method_decorator(csrf_exempt, name='dispatch')
