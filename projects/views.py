@@ -546,7 +546,6 @@ def generate_estimatepdf(request):
                     # Handle cases where transport is not a valid number
                     return Response({"error": "Invalid transport value."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Save the updated fields if any
             if update_fields:
                 project_instance.save(update_fields=update_fields)
 
@@ -554,24 +553,14 @@ def generate_estimatepdf(request):
             # Fetch the user profile - assuming one exists or gets created
             user_profile, created = UserProfile.objects.get_or_create(user=request.user)
             user = request.user
-            # We don't strictly need ProjectSerializer(project_instance).data
-            # if we are accessing model instance attributes directly,
-            # but using the serializer ensures data consistency and includes calculated fields
-            # that might not be model fields (like total_price on ProjectMaterial etc.)
-            # Let's use the serializer data but override/add fields as needed for the context.
             project_data = ProjectSerializer(project_instance).data
-
-            # Calculate grand_total based on components and the current transport payload value
-            # This is more robust than trusting a potentially incorrect saved total_cost
             subtotal = decimal.Decimal(project_data.get('subtotal_cost', '0'))
             profit_amount = decimal.Decimal(project_data.get('profit', '0'))
-            # Use the transport value that was potentially just updated and validated
             calculated_grand_total = subtotal + profit_amount + current_transport
-
 
             context_data = {
                 # Company/User Profile Info
-                'user_profile': user, # Pass the UserProfile object/dictionary
+                'user_profile': user_profile, # Pass the UserProfile object/dictionary
                 # Settings/Theme
                 'primary_color': settings.PRIMARY_COLOR if hasattr(settings, 'PRIMARY_COLOR') else '#007bff', # Get primary color from settings
                 'base_url': request.build_absolute_uri('/')[:-1] + settings.STATIC_URL, # Base URL for static files
