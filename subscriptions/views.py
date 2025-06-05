@@ -41,93 +41,67 @@ User = get_user_model()
 from accounts.models import  SubscriptionPlan, UserSubscription # Import your models
 
 # --- Helper function for subscription logic ---
+from datetime import timedelta
+from django.utils import timezone
+
 def activate_user_subscription(user_instance, subscription_plan, received_amount_ghs, reference):
     """
-    Activates or updates a user's subscription based on the purchased plan.
-    Handles recurring plans, pay-per-use, and add-ons using UserSubscription model.
+    Activates or updates a user's subscription based on the selected plan.
+    Respects unused limits unless the subscription has expired.
     """
     print(f"[{reference}] Activating subscription for user {user_instance.id} with plan '{subscription_plan.name}'...")
 
     try:
-        # Get or create the UserSubscription record for this user
-        # user.subscription uses the related_name 'subscription' from OneToOneField
         user_sub, created = UserSubscription.objects.get_or_create(user=user_instance)
+        now = timezone.now()
 
-        # Common updates for any type of successful payment
-        user_sub.plan = subscription_plan # Link to the purchased plan
+        # Common updates
+        user_sub.plan = subscription_plan
         user_sub.payment_status = 'Paid'
-        user_sub.is_active = True # Mark as active
-        user_sub.is_trial_active = False # End any active trial if a paid plan is purchased
+        user_sub.is_active = True
+        user_sub.is_trial_active = False
 
-        # Handle "Unlimited" from plan limits (99999 in DB)
-        # We need to decide if 99999 means actual unlimited (no check needed),
-        # or if it's a very high number that still needs to be stored and decremented.
-        # For simplicity, here we'll store 99999 as the limit.
-        UNLIMITED_LIMIT = 99999
-
-        # Logic for different plan types based on duration_in_days (from SubscriptionPlan)
-        if subscription_plan.duration_in_days > 0: # Recurring monthly plans (Basic, Contractor)
-            # Extend subscription duration
-            if user_sub.end_date and user_sub.end_date > timezone.now():
-                # If existing subscription is still active, extend from its end_date
+        if subscription_plan.duration_in_days > 0:
+            # Time-based plan (e.g., Free, Basic, Contractor)
+            if user_sub.end_date and user_sub.end_date > now:
+                # Extend current subscription from end_date, usage remains untouched
                 user_sub.end_date += timedelta(days=subscription_plan.duration_in_days)
+                print(f"[{reference}] Subscription extended. Usage preserved.")
             else:
-                # Otherwise, start from now
-                user_sub.end_date = timezone.now() + timedelta(days=subscription_plan.duration_in_days)
-
-            # Reset usage counters for new monthly cycle
-            user_sub.projects_created = 0
-            user_sub.three_d_views_used = 0
-            user_sub.manual_estimates_used = 0
-
-            # Set limits based on the new plan's features
+                # Plan expired or no end_date – reset usage and start fresh
+                user_sub.start_date = now
+                user_sub.end_date = now + timedelta(days=subscription_plan.duration_in_days)
+                user_sub.projects_created = 0
+                user_sub.three_d_views_used = 0
+                user_sub.manual_estimates_used = 0
+                print(f"[{reference}] Subscription renewed. Usage counters reset.")
+                
             user_sub.project_limit = subscription_plan.project_limit
             user_sub.three_d_views_limit = subscription_plan.three_d_view_limit
             user_sub.manual_estimate_limit = subscription_plan.manual_estimate_limit
-            
-            print(f"[{reference}] User {user_instance.email} subscribed to '{subscription_plan.name}'. New expiry: {user_sub.end_date}.")
 
-        elif subscription_plan.name == 'Pay-Per-Use' and subscription_plan.duration_in_days == 0:
-            # For Pay-Per-Use, it's a one-time grant of limits.
-            # It doesn't affect end_date. We need to add to the existing limits.
-            # Your `can_use_feature` and `record_feature_usage` should work by decrementing `projects_created` vs `project_limit`
-            # or by comparing current usage against new total limits.
-            # If "Pay-Per-Use" adds to a *balance*, then the limits need to be incremented here:
+        elif subscription_plan.name == 'Pay-Per-Use':
             user_sub.project_limit += subscription_plan.project_limit
             user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
             user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
+            print(f"[{reference}] Pay-Per-Use plan purchased. Limits incremented.")
 
-            # IMPORTANT: For Pay-Per-Use, you might need to adjust `projects_created`, etc.
-            # If these are counters *against* limits, then adding to limits means the user effectively has more.
-            # If your usage tracking is against a balance, you might want to adjust `projects_created` to represent
-            # a new "start" point or track remaining.
-            # Given your current `can_use_feature` logic (projects_created < project_limit), this works:
-            # user_sub.projects_created = max(0, user_sub.projects_created - subscription_plan.project_limit) # If deducting from usage
-            # Or simply, the limits are increased, and usage continues to increment against the higher limit.
-            
-            # The 'is_active' and 'end_date' might not be directly relevant for this,
-            # or you might set a very short expiry for the "validity" of the purchased credits.
-            # For now, we assume it's just increasing the total allowed limits.
-            
-            print(f"[{reference}] User {user_instance.email} purchased '{subscription_plan.name}'. Allowances added to existing limits.")
-
-        elif subscription_plan.name == 'Add-On Pack' and subscription_plan.duration_in_days == 0:
-            # Add-on logic: Increment existing limits without changing subscription state or expiry.
+        elif subscription_plan.name == 'Add-On Pack':
             user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
             user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
-            
-            print(f"[{reference}] User {user_instance.email} purchased '{subscription_plan.name}'. Add-on allowances added.")
-        
-        else:
-            print(f"[{reference}] Unhandled plan type or inconsistent configuration: {subscription_plan.name} (ID: {subscription_plan.id}). No specific activation logic applied.")
+            print(f"[{reference}] Add-On Pack applied. Extra features added.")
 
-        user_sub.save() # Save the UserSubscription object with all updates
-        print(f"[{reference}] UserSubscription for {user_instance.email} saved successfully.")
+        else:
+            print(f"[{reference}] Unrecognized plan: {subscription_plan.name} (ID: {subscription_plan.id})")
+
+        user_sub.save()
+        print(f"[{reference}] Subscription for user {user_instance.email} saved.")
         return True
 
     except Exception as e:
-        print(f"[{reference}] Error activating subscription for user {user_instance.email} with plan '{subscription_plan.name}': {e}")
+        print(f"[{reference}] Error activating subscription for user {user_instance.email}: {e}")
         return False
+    
 
 from .serializers import InitiatePaymentSerializer
 
@@ -247,40 +221,64 @@ class InitiatePaymentAPIView(APIView):
 
         try:
             paystack_response = requests.post(url, headers=headers, json=payload)
-            paystack_response.raise_for_status() # Raises HTTPError for 4xx/5xx responses
+            paystack_response.raise_for_status()  # Raises HTTPError for 4xx/5xx responses
             paystack_data = paystack_response.json()
-            print("payment initaled ")
+            print("Payment initialized")
 
-            # Update the payment record with Paystack's initial response (for debugging)
+            # Update the payment record with Paystack's initial response
             payment_record.paystack_response_status = paystack_data.get('status')
             payment_record.paystack_response_message = paystack_data.get('message', 'No message from Paystack.')
+            
+            paystack_data_status = paystack_data.get('data', {}).get('status')
+            payment_record.paystack_response_status = paystack_data_status  # New: save inner status like "send_otp"
             payment_record.save()
-            print(f"[{reference}] Paystack initialization response received. Status: {paystack_data.get('status')}")
 
-            if paystack_data.get('status'):
-                # Paystack initialization was successful (doesn't mean payment is complete)
-                return Response({
-                    'status': 'success',
-                    'message': 'Payment initiated successfully. Please check your phone for the authorization prompt.',
-                    'data': {
-                        'reference': reference, # Frontend needs this to track the payment
-                        # 'authorization_url': paystack_data['data'].get('authorization_url') # Not strictly needed for MoMo
-                    }
-                }, status=status.HTTP_200_OK)
+            print(f"[{reference}] Paystack initialization response received. Status: {paystack_data.get('status')} / Charge Status: {paystack_data_status}")
+
+            if paystack_data.get('status') and paystack_data.get('data'):
+                # Differentiate based on Paystack's internal charge status
+                if paystack_data_status == 'send_otp':
+                    return Response({
+                        'status': 'otp_required',
+                        'message': 'OTP has been sent. Prompt user to enter it.',
+                        'data': {
+                            'reference': reference
+                        }
+                    }, status=status.HTTP_200_OK)
+
+                elif paystack_data_status in ['pending', 'success']:
+                    return Response({
+                        'status': 'success',
+                        'message': 'Payment initiated. Await confirmation on phone.',
+                        'data': {
+                            'reference': reference
+                        }
+                    }, status=status.HTTP_200_OK)
+
+                else:
+                    return Response({
+                        'status': 'unknown',
+                        'message': f'Unhandled Paystack charge status: {paystack_data_status}',
+                        'data': {
+                            'reference': reference,
+                            'raw_status': paystack_data_status
+                        }
+                    }, status=status.HTTP_200_OK)
+
             else:
-                # Paystack returned success: false
-                payment_record.status = 'failed' # Mark as failed if Paystack says so
+                # Paystack returned status=false or malformed data
+                payment_record.status = 'failed'
                 payment_record.gateway_response = paystack_data.get('message', 'Paystack reported failure during initialization.')
                 payment_record.save()
                 print(f"[{reference}] Paystack initialization failed: {paystack_data.get('message')}")
                 return Response({
                     'status': 'error',
                     'message': paystack_data.get('message', 'Failed to initialize payment with Paystack.'),
-                    'paystack_errors': paystack_data.get('errors') # Pass Paystack specific errors
+                    'paystack_errors': paystack_data.get('errors')
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except requests.exceptions.RequestException as e:
-            # Handle network errors or non-2xx responses from Paystack
+            # Handle network or non-2xx HTTP response from Paystack
             print(f"[{reference}] Error communicating with Paystack API: {e}")
             payment_record.status = 'failed'
             payment_record.paystack_response_message = f"Network/API error with Paystack: {e}"
@@ -290,15 +288,17 @@ class InitiatePaymentAPIView(APIView):
                 'message': 'Could not connect to Paystack service. Please try again later.',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         except Exception as e:
-            # Catch any other unexpected errors during the process
+            # Catch-all for any unexpected errors
             print(f"[{reference}] Unexpected error during payment initiation: {e}")
             payment_record.status = 'failed'
             payment_record.paystack_response_message = f"Unexpected backend error: {e}"
             payment_record.save()
             return Response({
                 'status': 'error',
-                'message': 'An unexpected error occurred during payment processing.'
+                'message': 'An unexpected error occurred during payment processing.',
+                'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Webhook view remains largely the same, but you could still use APIView if preferred
@@ -364,7 +364,6 @@ def verify_paystack_otp(request):
 @method_decorator(csrf_exempt, name='dispatch')
 class PaystackWebhookAPIView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         payload = request.body
@@ -431,22 +430,28 @@ class PaystackWebhookAPIView(APIView):
                 print(f"[{reference}] Webhook: PaymentTransaction status updated to 'completed'.")
 
                 # 4. Activate user's subscription
-                user_id = data.get('metadata', {}).get('user_id')
-                plan_name = data.get('metadata', {}).get('plan_name')
+                user_id = payment.user
+
+                # Match amount to a subscription plan
+                try:
+                    matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs, is_active=True)
+                except SubscriptionPlan.DoesNotExist:
+                    print(f"[{reference}] Webhook: No subscription plan found with price {received_amount_ghs} GHS.")
+                    return Response({'message': 'No matching plan found for this amount.'}, status=status.HTTP_200_OK)
                 
-                if user_id and plan_name:
+                if user_id :
                     try:
                         user_instance = User.objects.get(id=user_id) 
-                        subscription_plan = SubscriptionPlan.objects.get(name=plan_name) 
+                        
 
-                        if activate_user_subscription(user_instance, subscription_plan, received_amount_ghs, reference):
-                            print(f"[{reference}] Webhook: User {user_instance.email} subscription for '{plan_name}' successfully processed.")
+                        if activate_user_subscription(user_instance, matched_plan, received_amount_ghs, reference):
+                            print(f"[{reference}] Webhook: User {user_instance.email} subscription for '{matched_plan.name}' successfully processed.")
                         else:
                             print(f"[{reference}] Webhook: Failed to activate subscription for user {user_instance.email}.")
                     except User.DoesNotExist:
                         print(f"[{reference}] Webhook: User with ID {user_id} not found for subscription activation.")
                     except SubscriptionPlan.DoesNotExist:
-                        print(f"[{reference}] Webhook: Subscription Plan '{plan_name}' not found in database for user {user_id}. Ensure plan names match backend and frontend.")
+                        print(f"[{reference}] Webhook: Subscription Plan '{matched_plan.name}' not found in database for user {user_id}. Ensure plan names match backend and frontend.")
                     except Exception as e:
                         print(f"[{reference}] Webhook: Error during subscription activation: {e}")
                 else:
