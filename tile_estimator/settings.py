@@ -1,4 +1,10 @@
 
+
+
+
+
+
+
 """
 Django settings for tile_estimator project.
 """
@@ -21,7 +27,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-key-for-development-only')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-CSRF_TRUSTED_ORIGINS= ['https://tilnet.up.railway.app']
+CSRF_TRUSTED_ORIGINS= ["tilenet.onrender.com"]
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -162,8 +168,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Paystack settings
-# PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY', '')
-# PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY', '')
 # settings.py
 CACHES = {
     'default': {
