@@ -189,7 +189,7 @@ class InitiatePaymentAPIView(APIView):
          
         # --- STEP 1: Create a pending payment record in your database ---
         if mobile_operator == 'telecel':
-            mobile_operator = 'vodafone'
+            mobile_operator = 'vod'
         try:
             payment_record = PaymentTransaction.objects.create(
                 user=user,
@@ -212,6 +212,7 @@ class InitiatePaymentAPIView(APIView):
             )
 
         # --- STEP 2: Initiate payment with Paystack ---
+        print("calling the endpoint")
         url = "https://api.paystack.co/charge"
         headers = {
             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
@@ -248,6 +249,7 @@ class InitiatePaymentAPIView(APIView):
             paystack_response = requests.post(url, headers=headers, json=payload)
             paystack_response.raise_for_status() # Raises HTTPError for 4xx/5xx responses
             paystack_data = paystack_response.json()
+            print("payment initaled ")
 
             # Update the payment record with Paystack's initial response (for debugging)
             payment_record.paystack_response_status = paystack_data.get('status')
