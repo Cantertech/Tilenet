@@ -234,7 +234,7 @@ class InitiatePaymentAPIView(APIView):
             display_text = data.get('display_text') or api_message
 
             payment_record.paystack_response_message = api_message
-            payment_record.paystack_response_status = charge_status
+            payment_record.paystack_response_status = api_status
             payment_record.gateway_response = gateway_response
             payment_record.save()
 
