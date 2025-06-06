@@ -195,7 +195,7 @@ class InitiatePaymentAPIView(APIView):
 
         # The callback_url for mobile money is less critical for *redirecting* the user's browser,
         # as the auth happens on the phone. But Paystack requires it, and it's good practice
-        # to point to a success page that users can land on.
+        # to point to a success page that users can land on.what is the main difference between the fish in the pond and the fish in
         # Ensure 'payment_success_page' is defined in your urls.py
         callback_url = "https://example.com/success/"
 
@@ -251,7 +251,7 @@ class InitiatePaymentAPIView(APIView):
                         }
                     }, status=status.HTTP_200_OK)
 
-                elif charge_status in ['pending', 'success']:
+                elif charge_status in ['pending', 'success','pay_offline']:
                     return Response({
                         'status': 'success',
                         'message': 'Payment initiated. Await confirmation on phone.',
