@@ -208,7 +208,7 @@ class InitiatePaymentAPIView(APIView):
                 "phone": phone_number,
                 "provider": mobile_operator  # Must be one of: "mtn", "vodafone", "airtel_tigo"
             },
-            "pay_offline": False,
+            "pay_offline": False, 
             "callback_url": callback_url,
             "metadata": {
                 "customer_name": customer_name,
@@ -236,6 +236,7 @@ class InitiatePaymentAPIView(APIView):
             payment_record.paystack_response_message = api_message
             payment_record.paystack_response_status = api_status
             payment_record.gateway_response = gateway_response
+            payment_record.user = request.user
             payment_record.save()
 
             print(f"[{reference}] Paystack response: API status={api_status}, charge_status={charge_status}, next_action={next_action}, gateway_response={gateway_response}")
@@ -444,13 +445,11 @@ class PaystackWebhookAPIView(APIView):
                 
                 if user_id :
                     try:
-                        user_instance = User.objects.get(id=user_id) 
                         
-
-                        if activate_user_subscription(user_instance, matched_plan, received_amount_ghs, reference):
-                            print(f"[{reference}] Webhook: User {user_instance.email} subscription for '{matched_plan.name}' successfully processed.")
+                        if activate_user_subscription(user_id, matched_plan, received_amount_ghs, reference):
+                            print(f"[{reference}] Webhook: User {user_id.email} subscription for '{matched_plan.name}' successfully processed.")
                         else:
-                            print(f"[{reference}] Webhook: Failed to activate subscription for user {user_instance.email}.")
+                            print(f"[{reference}] Webhook: Failed to activate subscription for user {user_id.email}.")
                     except User.DoesNotExist:
                         print(f"[{reference}] Webhook: User with ID {user_id} not found for subscription activation.")
                     except SubscriptionPlan.DoesNotExist:
