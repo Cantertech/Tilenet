@@ -208,6 +208,7 @@ class InitiatePaymentAPIView(APIView):
                 "phone": phone_number,
                 "provider": mobile_operator  # Must be one of: "mtn", "vodafone", "airtel_tigo"
             },
+            "pay_offline": False,
             "callback_url": callback_url,
             "metadata": {
                 "customer_name": customer_name,
