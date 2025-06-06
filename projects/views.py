@@ -6,6 +6,7 @@ import os
 import decimal
 
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.http import Http404, HttpResponse, JsonResponse
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -561,6 +562,8 @@ def generate_estimatepdf(request):
             context_data = {
                 # Company/User Profile Info
                 'user_profile': user_profile, # Pass the UserProfile object/dictionary
+                'user_info': user,
+                'project_date': timezone.now().date(),
                 # Settings/Theme
                 'primary_color': settings.PRIMARY_COLOR if hasattr(settings, 'PRIMARY_COLOR') else '#007bff', # Get primary color from settings
                 'base_url': request.build_absolute_uri('/')[:-1] + settings.STATIC_URL, # Base URL for static files

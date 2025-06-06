@@ -312,8 +312,8 @@
                         <h2>From</h2> {# Label for your company info #}
                          <p class="info-pair"><span class="label">Company:</span> {{ user_profile.company_name|default:"[Company Name]" }}</p>
                          <p class="info-pair"><span class="label">Address:</span> {{ user_profile.address|default:"[Company Address]" }}</p>
-                         {% if user_profile.email %}<p class="info-pair"><span class="label">Email:</span> {{ user_profile.email }}</p>{% endif %}
-                         <p class="info-pair"><span class="label">Phone:</span> {{ user_profile.phone_number|default:"[Company Phone]" }}</p>
+                         {% if user_profile.email %}<p class="info-pair"><span class="label">Email:</span> {{ user_info.email }}</p>{% endif %}
+                         <p class="info-pair"><span class="label">Phone:</span> {{ user_info.phone_number|default:"[Company Phone]" }}</p>
                          {# Add website etc. if available on user_profile #}
                          {% if user_profile.website %}<p class="info-pair"><span class="label">Website:</span> {{ user_profile.website }}</p>{% endif %}
                     </div>
@@ -459,7 +459,7 @@
                      <p class="info-pair"><span class="label">Estimated Days:</span> {{ estimated_days|default:0 }}</p>
                       
                       {% if total_area and total_area > 0 %}
-                         <p class="info-pair"><span class="label">Total Area Calculated:</span> {{ total_area|default:0|floatformat:2 }} {{ measurement_unit|default:"m" }}²</p>
+                         <p class="info-pair"><span class="label">Total Area Calculated:</span> {{ total_area|default:0|floatformat:2 }}m²</p>
                       {% endif %}
                  </div>
 
@@ -486,7 +486,6 @@
                  <p>1. This estimate is valid for {{ validity_days|default:30 }} days from the issue date.</p>
                  <p>2. Any work requested outside the scope of this estimate will be billed separately.</p>
                  <p>3. Payment terms are as specified in the payment section. Timely payment is appreciated.</p>
-                 <p>4. [Add other relevant terms]</p>
              </div> {# End section-content #}
              <div style="text-align: center; margin-top: 15px; font-size: 10px; color: #ffffff; background-color: rgb(65, 65, 250);">
                  Powered by TileNet
