@@ -20,7 +20,7 @@
             padding-bottom: 15mm; /* Reduced padding for more width usage */
             line-height: 1.5; /* Slightly reduced line height */
             color: #333;
-            background-color: #fff; /* Explicitly white background */
+            background-color: #e3dd95; /* Explicitly white background */
         }
         .container {
             width: 100%;
@@ -380,10 +380,11 @@
                     <thead>
                         <tr>
                             <th>Item</th> {# Changed from # to Item #}
-                            <th>Description</th> {# Changed from Material Name #}
-                            <th>Unit</th> {# Added Unit #}
+                            <th>Name</th> {# Changed from Material Name #}
+                            
                             
                             <th>Quantity Needed</th> {# This is quantity_with_wastage #}
+                            <th>Unit</th> {# Added Unit #}
                            
                         </tr>
                     </thead>
@@ -394,10 +395,11 @@
                             <td>{{ forloop.counter }}</td> {# Use forloop.counter for item number #}
                             <td>{{ item.name|default:"[Material Name]" }}</td>
                             {# Access nested unit abbreviation from the serialized Material object within ProjectMaterial #}
-                            <td>{{ item.material.unit.abbreviation|default:"N/A" }}</td> {# Added Unit #}
+                           
                             
                             {# Use calculated field quantity_with_wastage #}
                             <td>{{ item.quantity_with_wastage|default:0|floatformat:2 }}</td>
+                            <td>{{ item.unit|default:"N/A" }}</td> {# Added Unit #}
                             {# Use calculated field total_price #}
                             
                         </tr>

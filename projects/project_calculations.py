@@ -200,6 +200,25 @@ def calculate_project_areas_and_save(project_instance):
     project_instance.save(update_fields=['total_floor_area', 'total_wall_area', 'total_area'])
     print(f"Saved total areas for Project ID {project_instance.id}: Total Floor={project_instance.total_floor_area}, Total Wall={project_instance.total_wall_area}, Total Area={project_instance.total_area}")
 
+def convert_wheelbarrows_to_best_unit(wheelbarrows: float) -> tuple[float, str]:
+    WHEELBARROWS_PER_LARGE_TIPPER = 300
+    WHEELBARROWS_PER_SMALL_TIPPER = 175
+    HEADPANS_PER_WHEELBARROW = 8
+
+    if wheelbarrows >= 300:
+        large_tippers = wheelbarrows / WHEELBARROWS_PER_LARGE_TIPPER
+        return round(large_tippers, 2), "large tipper"
+    elif 150 <= wheelbarrows <= 180:
+        return 1, "small tipper"
+    elif wheelbarrows >= 180:
+        large_tippers = wheelbarrows / WHEELBARROWS_PER_LARGE_TIPPER
+        return round(large_tippers, 2), "large tipper"
+    elif wheelbarrows >= 1:
+        return round(wheelbarrows, 2), "wheelbarrow"
+    else:
+        headpans = wheelbarrows * HEADPANS_PER_WHEELBARROW
+        return round(headpans, 2), "headpan"
+
 
 def calculate_project_material_item_totals_and_save(project_material_instance):
     """
@@ -221,6 +240,7 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
     relevant_area_dec = decimal.Decimal(project_instance.total_area or 0) # Default to total area
     project_type = project_instance.project_type
     material_name = material_instance.name.lower() # Use lower case for consistent lookup
+    material_unit = material_instance.unit.lower()
     wastage_percentage_dec = decimal.Decimal(project_instance.wastage_percentage or 0)
     mortar_thickness_dec = decimal.Decimal(project_instance.mortar_thickness or 0)
     calculated_quantity_raw = decimal.Decimal(0)
@@ -288,6 +308,17 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
     else:
         calculated_quantity_raw = relevant_area_dec * coverage_rate_per_unit
         print(f"Calculated raw quantity for '{material_name}': {relevant_area_dec} (area) * {coverage_rate_per_unit} (coverage) = {calculated_quantity_raw}")
+
+    if material_name == 'sand':
+        quantity_in_float = float(calculated_quantity_raw)
+        converted_value, converted_unit = convert_wheelbarrows_to_best_unit(quantity_in_float)
+        # Store or return these values as needed
+        material_instance.calculated_quantity = converted_value
+        material_instance.unit = converted_unit
+        print(f"Sand converted: {converted_value} {converted_unit}")
+    else:
+        material_instance.calculated_quantity = calculated_quantity_raw
+        material_instance.unit = material_unit  # Keep original unit
     wastage_perrc = 0
     if wastage_percentage_dec <= 3.01 :
         if relevant_area_dec <= 55:

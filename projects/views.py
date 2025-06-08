@@ -513,7 +513,7 @@ def generate_estimatepdf(request):
                     # Prefetch ProjectMaterials, their related Material, and the Material's related Unit
                     # Assuming 'material' is the ForeignKey from ProjectMaterial to Material
                     # Assuming 'unit' is the ForeignKey from Material to Unit
-                    Prefetch('materials', queryset=ProjectMaterial.objects.select_related('material__unit')),
+                    Prefetch('materials', queryset=ProjectMaterial.objects.select_related('material')),
                     # Prefetch Workers
                     'workers',
                 ),
@@ -568,11 +568,11 @@ def generate_estimatepdf(request):
                 'primary_color': settings.PRIMARY_COLOR if hasattr(settings, 'PRIMARY_COLOR') else '#007bff', # Get primary color from settings
                 'base_url': request.build_absolute_uri('/')[:-1] + settings.STATIC_URL, # Base URL for static files
                 'validity_days': 30, # Or get from settings or UserProfile
-                'project_date': project_data.get('date', 'N/A'),
+                
                 # Project & Estimate Details
                 'estimate_number': project_data.get('estimate_number', 'N/A'),
                 'project_name': project_data.get('name', 'N/A'),
-                'project_date': project_data.get('date', 'N/A'), # Should be a date object or string
+                 # Should be a date object or string
                 'location': project_data.get('location', 'N/A'), # Project location
                 'project_type': project_instance.project_type, # Assuming project_type is direct field
                 'status': project_data.get('status', 'N/A'),

@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import AppVersionCheckAPIView, RequestOTPView, VerifyOTPAndSetPasswordView ,InitiatePaymentAPIView, PaystackWebhookAPIView, check_payment_status,verify_paystack_otp
+from .views import AppVersionCheckAPIView, RequestOTPView, VerifyOTPAndSetPasswordView ,InitiatePaymentAPIView, PaystackWebhookAPIView, VerifyPaystackPaymentAPIView, check_payment_status,verify_paystack_otp
 
 
 router = DefaultRouter()
@@ -20,6 +20,7 @@ urlpatterns = [
      path('check-payment-status/<str:reference>/', check_payment_status, name='check-payment-status'),
      path('app-version/', AppVersionCheckAPIView.as_view(), name='app_version_check'),
      path('verify-paystack-otp/', views.verify_paystack_otp, name='verify_paystack_otp'),
+     path('verify-payment/', VerifyPaystackPaymentAPIView.as_view(), name='verify_payment'),
 ]
 
 

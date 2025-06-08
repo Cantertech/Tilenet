@@ -11,6 +11,7 @@ from django.conf import settings
 from django.utils import timezone
 import requests
 import json
+import time
 import hashlib
 import hmac
 from django.conf import settings
@@ -309,6 +310,79 @@ class InitiatePaymentAPIView(APIView):
 # @csrf_exempt
 # def paystack_webhook(request):
 #     ... (previous logic)
+
+class VerifyPaystackPaymentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        reference = request.data.get("reference")
+
+        if not reference:
+            return Response({'error': 'Missing reference.'}, status=400)
+
+        try:
+            payment_record = PaymentTransaction.objects.get(reference=reference, user=request.user)
+        except PaymentTransaction.DoesNotExist:
+            return Response({'error': 'Payment record not found.'}, status=404)
+
+        headers = {
+            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
+        }
+
+        verify_url = f"https://api.paystack.co/transaction/verify/{reference}"
+
+        max_attempts = 5
+        delay_between_attempts = 10  # seconds
+
+        for attempt in range(max_attempts):
+            response = requests.get(verify_url, headers=headers)
+            try:
+                result = response.json()
+            except Exception as e:
+                return Response({'error': f'Invalid response from Paystack: {e}'}, status=502)
+
+            if result.get("status") is True:
+                data = result["data"]
+                charge_status = data.get("status")
+
+                if charge_status == "success":
+                    payment_record.status = "success"
+                    payment_record.gateway_response = data.get("gateway_response", "")
+                    payment_record.paystack_verified = True
+                    payment_record.save()
+
+                    return Response({
+                        "status": "success",
+                        "message": "Payment was successful.",
+                        "data": data
+                    }, status=200)
+
+                elif charge_status == "failed":
+                    payment_record.status = "failed"
+                    payment_record.gateway_response = data.get("gateway_response", "")
+                    payment_record.save()
+
+                    return Response({
+                        "status": "failed",
+                        "message": "Payment failed.",
+                        "data": data
+                    }, status=400)
+
+                elif charge_status == "abandoned":
+                    return Response({
+                        "status": "abandoned",
+                        "message": "User abandoned the payment.",
+                        "data": data
+                    }, status=408)
+
+            # Retry after delay
+            time.sleep(delay_between_attempts)
+
+        return Response({
+            "status": "pending",
+            "message": "Payment is still pending after multiple attempts. Please try again later.",
+            "reference": reference
+        }, status=202)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
