@@ -122,7 +122,7 @@ class MaterialAdmin(admin.ModelAdmin):
 
     # CORRECTED AGAIN: Use the field name 'user' directly.
     # Django admin will automatically provide the __isnull filter options.
-    list_filter = ('user', 'unit__name') # Changed from 'user__isnull'
+    list_filter = ('user', 'unit') # Changed from 'user__isnull'
 
     search_fields = ('name', 'user__username')
     fields = ('user', 'name', 'unit', 'default_unit_price', 'default_coverage_area')

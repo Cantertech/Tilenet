@@ -240,7 +240,9 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
     relevant_area_dec = decimal.Decimal(project_instance.total_area or 0) # Default to total area
     project_type = project_instance.project_type
     material_name = material_instance.name.lower() # Use lower case for consistent lookup
-    material_unit = material_instance.unit.lower()
+    
+    material_unit = material_instance.unit.name.lower() if material_instance.unit else "unknown"
+
     wastage_percentage_dec = decimal.Decimal(project_instance.wastage_percentage or 0)
     mortar_thickness_dec = decimal.Decimal(project_instance.mortar_thickness or 0)
     calculated_quantity_raw = decimal.Decimal(0)
@@ -313,6 +315,7 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
         quantity_in_float = float(calculated_quantity_raw)
         converted_value, converted_unit = convert_wheelbarrows_to_best_unit(quantity_in_float)
         # Store or return these values as needed
+        
         material_instance.calculated_quantity = converted_value
         material_instance.unit = converted_unit
         print(f"Sand converted: {converted_value} {converted_unit}")

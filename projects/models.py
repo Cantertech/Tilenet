@@ -55,7 +55,9 @@ class Material(models.Model):
         verbose_name=_("User")
     )
     name = models.CharField(max_length=255, verbose_name=_("Name"))
-    unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Unit"))
+    unit = models.CharField(max_length=20,verbose_name=_("Name") )
+
+    # unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Unit"))
     default_unit_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_("Default Unit Price"))
     default_coverage_area = models.DecimalField(
         max_digits=10,
