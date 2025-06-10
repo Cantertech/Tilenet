@@ -507,26 +507,31 @@ class VerifyPaystackPaymentAPIView(APIView):
 
             if charge_status == "success":
                 # Call the new processing function
-                if process_successful_payment(payment_record, data):
-                    # If processing was successful, respond with success
-                    return Response({
+                # if process_successful_payment(payment_record, data):
+                #     # If processing was successful, respond with success
+                #     return Response({
+                #         "payment_status": "success",
+                #         "message": "Payment was successful and processed.",
+                #         "data": data
+                #     }, status=200)
+                # else:
+                #     # If processing failed (e.g., amount mismatch, plan not found, subscription activation issue)
+                #     # The process_successful_payment function updates the payment_record status internally
+                #     # You can fetch the updated status if needed, but for simplicity, respond with error
+                #     return Response({
+                #         "payment_status": payment_record.status, # Return the potentially updated status
+                #         "message": "Payment successful with Paystack, but an issue occurred during internal processing.",
+                #         "data": data
+                #     }, status=500) # Internal server error for processing issues
+                 return Response({
                         "payment_status": "success",
                         "message": "Payment was successful and processed.",
                         "data": data
                     }, status=200)
-                else:
-                    # If processing failed (e.g., amount mismatch, plan not found, subscription activation issue)
-                    # The process_successful_payment function updates the payment_record status internally
-                    # You can fetch the updated status if needed, but for simplicity, respond with error
-                    return Response({
-                        "payment_status": payment_record.status, # Return the potentially updated status
-                        "message": "Payment successful with Paystack, but an issue occurred during internal processing.",
-                        "data": data
-                    }, status=500) # Internal server error for processing issues
 
             elif charge_status == "failed":
                 # Call the new processing function
-                process_failed_payment(payment_record, data) # This function updates the record directly
+                # process_failed_payment(payment_record, data) # This function updates the record directly
                 return Response({
                     "payment_status": "failed",
                     "message": "Payment failed.",
