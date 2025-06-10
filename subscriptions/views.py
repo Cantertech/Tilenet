@@ -506,19 +506,18 @@ class VerifyPaystackPaymentAPIView(APIView):
             status_from_paystack = data.get("status")
 
             if status_from_paystack == "success":
-                paystack_amount_kobo = data.get('amount')
-                if paystack_amount_kobo is None:
-                    return Response({'error': 'Paystack response missing amount data.'}, status=500)
-                
-                reference = request.data.get("reference")
-                received_amount_ghs = paystack_amount_kobo / 100.0 
                 payment_record.status = 'completed'
                 payment_record.completed_at = timezone.now()
                 payment_record.paystack_response_status = status_from_paystack
                 payment_record.gateway_response = data.get('gateway_response')
                 payment_record.save()
+                paystack_amount_kobo = data.get('amount')
+                
+                reference = request.data.get("reference")
+                received_amount_ghs = paystack_amount_kobo / 100.0 
+                
 
-                user_instance = payment_record.user
+                # user_instance = payment_record.user
                 try:
                     # Find the subscription plan based on the received amount
                     # Consider if multiple plans can have the same price or if you need a specific plan ID
