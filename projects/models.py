@@ -55,7 +55,7 @@ class Material(models.Model):
         verbose_name=_("User")
     )
     name = models.CharField(max_length=255, verbose_name=_("Name"))
-    unit = models.CharField(max_length=20,verbose_name=_("Name") )
+    unit = models.CharField(max_length=20,verbose_name=_("Unit") )
 
     # unit = models.ForeignKey(Unit, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Unit"))
     default_unit_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_("Default Unit Price"))
@@ -75,8 +75,9 @@ class Material(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f"{self.name} ({self.unit.abbreviation if self.unit else 'N/A'})"
-
+        # Since 'unit' is a CharField, it directly holds the unit string.
+        # No need to access an 'abbreviation' attribute.
+        return f"{self.name} ({self.unit})"
 
 # --- Project Settings ---
 

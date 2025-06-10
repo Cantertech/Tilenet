@@ -45,6 +45,64 @@ from accounts.models import  SubscriptionPlan, UserSubscription # Import your mo
 from datetime import timedelta
 from django.utils import timezone
 
+# def activate_user_subscription(user_instance, subscription_plan, received_amount_ghs, reference):
+#     """
+#     Activates or updates a user's subscription based on the selected plan.
+#     Respects unused limits unless the subscription has expired.
+#     """
+#     print(f"[{reference}] Activating subscription for user {user_instance.id} with plan '{subscription_plan.name}'...")
+
+#     try:
+#         user_sub, created = UserSubscription.objects.get_or_create(user=user_instance)
+#         now = timezone.now()
+
+#         # Common updates
+#         user_sub.plan = subscription_plan
+#         user_sub.payment_status = 'Paid'
+#         user_sub.is_active = True
+#         user_sub.is_trial_active = False
+
+#         if subscription_plan.duration_in_days > 0:
+#             # Time-based plan (e.g., Free, Basic, Contractor)
+#             if user_sub.end_date and user_sub.end_date > now:
+#                 # Extend current subscription from end_date, usage remains untouched
+#                 user_sub.end_date += timedelta(days=subscription_plan.duration_in_days)
+#                 print(f"[{reference}] Subscription extended. Usage preserved.")
+#             else:
+#                 # Plan expired or no end_date – reset usage and start fresh
+#                 user_sub.start_date = now
+#                 user_sub.end_date = now + timedelta(days=subscription_plan.duration_in_days)
+#                 user_sub.projects_created = 0
+#                 user_sub.three_d_views_used = 0
+#                 user_sub.manual_estimates_used = 0
+#                 print(f"[{reference}] Subscription renewed. Usage counters reset.")
+
+#             user_sub.project_limit = subscription_plan.project_limit
+#             user_sub.three_d_views_limit = subscription_plan.three_d_view_limit
+#             user_sub.manual_estimate_limit = subscription_plan.manual_estimate_limit
+
+#         elif subscription_plan.name == 'Pay-Per-Use':
+#             user_sub.project_limit += subscription_plan.project_limit
+#             user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
+#             user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
+#             print(f"[{reference}] Pay-Per-Use plan purchased. Limits incremented.")
+
+#         elif subscription_plan.name == 'Add-On Pack':
+#             user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
+#             user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
+#             print(f"[{reference}] Add-On Pack applied. Extra features added.")
+
+#         else:
+#             print(f"[{reference}] Unrecognized plan: {subscription_plan.name} (ID: {subscription_plan.id})")
+
+#         user_sub.save()
+#         print(f"[{reference}] Subscription for user {user_instance.email} saved.")
+#         return True
+
+#     except Exception as e:
+#         print(f"[{reference}] Error activating subscription for user {user_instance.email}: {e}")
+#         return False
+    
 def activate_user_subscription(user_instance, subscription_plan, received_amount_ghs, reference):
     """
     Activates or updates a user's subscription based on the selected plan.
@@ -102,7 +160,103 @@ def activate_user_subscription(user_instance, subscription_plan, received_amount
     except Exception as e:
         print(f"[{reference}] Error activating subscription for user {user_instance.email}: {e}")
         return False
-    
+
+
+# New function to process successful payments
+def process_successful_payment(payment_record: PaymentTransaction, paystack_data: dict) -> bool:
+    """
+    Handles the business logic for a successful payment.
+    Updates the payment record, performs idempotency checks,
+    verifies amount, and activates the user's subscription.
+    """
+    reference = payment_record.reference
+    print(f"[{reference}] Processing successful payment...")
+
+    try:
+        # --- Idempotency Check ---
+        if payment_record.status == 'completed':
+            print(f"[{reference}] Payment already completed. Ignoring duplicate processing.")
+            return True # Already processed, so consider it a success
+
+        # 2. Verify important details (optional but recommended for security)
+        paystack_amount_pesewas = paystack_data.get('amount')
+        if paystack_amount_pesewas is None:
+            print(f"[{reference}] Paystack data missing 'amount'. Cannot verify.")
+            return False
+
+        received_amount_ghs = paystack_amount_pesewas / 100
+
+        # Compare with the amount you stored (which is in GHS)
+        if received_amount_ghs != float(payment_record.amount):
+            print(f"[{reference}] Amount mismatch! Expected {payment_record.amount} GHS, received {received_amount_ghs} GHS.")
+            payment_record.status = 'amount_mismatch' # Or 'failed_fraud_attempt'
+            payment_record.gateway_response = f"Amount mismatch: Expected {payment_record.amount}, Received {received_amount_ghs}"
+            payment_record.save()
+            # While it's an error, we return True to acknowledge Paystack and prevent retries for this reference
+            return True
+
+        # 3. Update the PaymentTransaction status
+        payment_record.status = 'completed'
+        payment_record.completed_at = timezone.now() # Record completion time
+        payment_record.paystack_response_status = paystack_data.get('status')
+        payment_record.gateway_response = paystack_data.get('gateway_response')
+        payment_record.save()
+        print(f"[{reference}] PaymentTransaction status updated to 'completed'.")
+
+        # 4. Activate user's subscription
+        user_instance = payment_record.user # Assuming payment_record has a ForeignKey to User
+
+        if not user_instance:
+            print(f"[{reference}] No user associated with this payment record.")
+            return False
+
+        try:
+            matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs, is_active=True)
+        except SubscriptionPlan.DoesNotExist:
+            print(f"[{reference}] No active subscription plan found with price {received_amount_ghs} GHS.")
+            # Depending on business logic, this might be a critical error or just a log
+            return False
+
+        if activate_user_subscription(user_instance, matched_plan, received_amount_ghs, reference):
+            print(f"[{reference}] User {user_instance.email} subscription for '{matched_plan.name}' successfully processed.")
+            return True
+        else:
+            print(f"[{reference}] Failed to activate subscription for user {user_instance.email}.")
+            return False
+
+    except PaymentTransaction.DoesNotExist:
+        print(f"[{reference}] PaymentTransaction not found in DB during successful payment processing. This should not happen if called from existing record.")
+        return False
+    except Exception as e:
+        print(f"[{reference}] Unexpected error during successful payment processing: {e}")
+        return False
+
+# New function to process failed payments
+def process_failed_payment(payment_record: PaymentTransaction, paystack_data: dict) -> bool:
+    """
+    Handles the business logic for a failed payment.
+    Updates the payment record status.
+    """
+    reference = payment_record.reference
+    print(f"[{reference}] Processing failed payment...")
+
+    try:
+        # Only update if the payment hasn't already been marked as completed
+        if payment_record.status != 'completed':
+            payment_record.status = 'failed'
+            payment_record.gateway_response = paystack_data.get('gateway_response', paystack_data.get('message', 'Payment failed.'))
+            payment_record.save()
+            print(f"[{reference}] PaymentTransaction status updated to 'failed'.")
+            return True
+        else:
+            print(f"[{reference}] Received 'charge.failed' but payment was already 'completed'. Ignoring status update.")
+            return True # Already completed, no need to change
+    except PaymentTransaction.DoesNotExist:
+        print(f"[{reference}] PaymentTransaction not found for failed reference.")
+        return False
+    except Exception as e:
+        print(f"[{reference}] Error processing failed payment: {e}")
+        return False
 
 from .serializers import InitiatePaymentSerializer
 
@@ -311,6 +465,9 @@ class InitiatePaymentAPIView(APIView):
 # def paystack_webhook(request):
 #     ... (previous logic)
 
+# Assuming you have `requests` imported already
+import requests # Make sure this is imported
+
 class VerifyPaystackPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -326,63 +483,83 @@ class VerifyPaystackPaymentAPIView(APIView):
             return Response({'error': 'Payment record not found.'}, status=404)
 
         headers = {
-            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
+            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            "Content-Type": "application/json"
         }
 
         verify_url = f"https://api.paystack.co/transaction/verify/{reference}"
 
-        max_attempts = 5
-        delay_between_attempts = 10  # seconds
-
-        for attempt in range(max_attempts):
+        try:
             response = requests.get(verify_url, headers=headers)
-            try:
-                result = response.json()
-            except Exception as e:
-                return Response({'error': f'Invalid response from Paystack: {e}'}, status=502)
+            response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
+            result = response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Paystack API request failed: {e}")
+            return Response({'error': 'Failed to connect to Paystack or Paystack returned an error.', 'details': str(e)}, status=503)
+        except ValueError as e:
+            print(f"Invalid JSON response from Paystack: {e}")
+            return Response({'error': f'Invalid response from Paystack: {e}'}, status=502)
 
-            if result.get("status") is True:
-                data = result["data"]
-                charge_status = data.get("status")
+        if result.get("status") is True and "data" in result:
+            data = result["data"]
+            charge_status = data.get("status")
 
-                if charge_status == "success":
-                    payment_record.status = "success"
-                    payment_record.gateway_response = data.get("gateway_response", "")
-                    payment_record.paystack_verified = True
-                    payment_record.save()
-
+            if charge_status == "success":
+                # Call the new processing function
+                if process_successful_payment(payment_record, data):
+                    # If processing was successful, respond with success
                     return Response({
-                        "status": "success",
-                        "message": "Payment was successful.",
+                        "payment_status": "success",
+                        "message": "Payment was successful and processed.",
                         "data": data
                     }, status=200)
-
-                elif charge_status == "failed":
-                    payment_record.status = "failed"
-                    payment_record.gateway_response = data.get("gateway_response", "")
-                    payment_record.save()
-
+                else:
+                    # If processing failed (e.g., amount mismatch, plan not found, subscription activation issue)
+                    # The process_successful_payment function updates the payment_record status internally
+                    # You can fetch the updated status if needed, but for simplicity, respond with error
                     return Response({
-                        "status": "failed",
-                        "message": "Payment failed.",
+                        "payment_status": payment_record.status, # Return the potentially updated status
+                        "message": "Payment successful with Paystack, but an issue occurred during internal processing.",
                         "data": data
-                    }, status=400)
+                    }, status=500) # Internal server error for processing issues
 
-                elif charge_status == "abandoned":
-                    return Response({
-                        "status": "abandoned",
-                        "message": "User abandoned the payment.",
-                        "data": data
-                    }, status=408)
+            elif charge_status == "failed":
+                # Call the new processing function
+                process_failed_payment(payment_record, data) # This function updates the record directly
+                return Response({
+                    "payment_status": "failed",
+                    "message": "Payment failed.",
+                    "data": data
+                }, status=400)
 
-            # Retry after delay
-            time.sleep(delay_between_attempts)
+            elif charge_status == "abandoned":
+                # No specific 'process_abandoned_payment' needed unless you have complex logic
+                # You can log this event if needed
+                payment_record.status = 'abandoned'
+                payment_record.gateway_response = data.get('gateway_response')
+                payment_record.save()
+                return Response({
+                    "payment_status": "abandoned",
+                    "message": "User abandoned the payment.",
+                    "data": data
+                }, status=408)
+            else:
+                # Any other status from Paystack (e.g., 'pending', 'reversed', etc.)
+                payment_record.status = charge_status
+                payment_record.save()
+                return Response({
+                    "payment_status": charge_status,
+                    "message": f"Payment is currently {charge_status}. Please wait or try again later.",
+                    "data": data
+                }, status=202)
 
-        return Response({
-            "status": "pending",
-            "message": "Payment is still pending after multiple attempts. Please try again later.",
-            "reference": reference
-        }, status=202)
+        else:
+            error_message = result.get("message", "Unknown error from Paystack.")
+            return Response({
+                "payment_status": "error",
+                "message": f"Paystack verification failed: {error_message}",
+                "data": result
+            }, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -447,7 +624,6 @@ class PaystackWebhookAPIView(APIView):
         payload = request.body
         paystack_signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
 
-
         if not paystack_signature:
             print("Webhook: No X-Paystack-Signature header.")
             return Response({'message': 'No X-Paystack-Signature header'}, status=status.HTTP_400_BAD_REQUEST)
@@ -471,89 +647,46 @@ class PaystackWebhookAPIView(APIView):
 
         event_type = event.get('event')
         data = event.get('data')
-        reference = data.get('reference') # Extract reference early for logging
+        reference = data.get('reference')
 
         print(f"Webhook Received: Event '{event_type}' for reference '{reference}'.")
 
+        try:
+            # Retrieve the payment record once
+            payment = PaymentTransaction.objects.get(reference=reference)
+        except PaymentTransaction.DoesNotExist:
+            print(f"[{reference}] Webhook: PaymentTransaction not found in DB. Could be a timing issue or an invalid reference.")
+            return Response({'message': 'Payment record not found'}, status=status.HTTP_404_NOT_FOUND) # Return 404 if record not found
+
         if event_type == 'charge.success':
-            try:
-                # 1. Retrieve the payment record from your DB
-                payment = PaymentTransaction.objects.get(reference=reference)
-
-                # --- Idempotency Check ---
-                if payment.status == 'completed':
-                    print(f"[{reference}] Webhook: Payment already completed. Ignoring duplicate webhook.")
-                    return Response(status=status.HTTP_200_OK) # Acknowledge even if duplicate
-
-                # 2. Verify important details (optional but recommended for security)
-                paystack_amount_pesewas = data.get('amount')
-                received_amount_ghs = paystack_amount_pesewas / 100
-
-                # Compare with the amount you stored (which is in GHS)
-                if received_amount_ghs != float(payment.amount):
-                    print(f"[{reference}] Webhook: Amount mismatch! Expected {payment.amount} GHS, received {received_amount_ghs} GHS.")
-                    payment.status = 'amount_mismatch' # Or 'failed_fraud_attempt'
-                    payment.gateway_response = f"Amount mismatch: Expected {payment.amount}, Received {received_amount_ghs}"
-                    payment.save()
-                    # It's generally better to return 200 OK even on error to avoid Paystack retries,
-                    # but ensure you log and handle the fraud attempt.
-                    return Response({'message': 'Amount mismatch detected'}, status=status.HTTP_200_OK) 
-
-                # 3. Update the PaymentTransaction status
-                payment.status = 'completed'
-                payment.completed_at = timezone.now() # Record completion time
-                payment.paystack_response_status = data.get('status')
-                payment.gateway_response = data.get('gateway_response')
-                payment.save()
-                print(f"[{reference}] Webhook: PaymentTransaction status updated to 'completed'.")
-
-                # 4. Activate user's subscription
-                user_id = payment.user
-
-                # Match amount to a subscription plan
-                try:
-                    matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs, is_active=True)
-                except SubscriptionPlan.DoesNotExist:
-                    print(f"[{reference}] Webhook: No subscription plan found with price {received_amount_ghs} GHS.")
-                    return Response({'message': 'No matching plan found for this amount.'}, status=status.HTTP_200_OK)
-                
-                if user_id :
-                    try:
-                        
-                        if activate_user_subscription(user_id, matched_plan, received_amount_ghs, reference):
-                            print(f"[{reference}] Webhook: User {user_id.email} subscription for '{matched_plan.name}' successfully processed.")
-                        else:
-                            print(f"[{reference}] Webhook: Failed to activate subscription for user {user_id.email}.")
-                    except User.DoesNotExist:
-                        print(f"[{reference}] Webhook: User with ID {user_id} not found for subscription activation.")
-                    except SubscriptionPlan.DoesNotExist:
-                        print(f"[{reference}] Webhook: Subscription Plan '{matched_plan.name}' not found in database for user {user_id}. Ensure plan names match backend and frontend.")
-                    except Exception as e:
-                        print(f"[{reference}] Webhook: Error during subscription activation: {e}")
-                else:
-                    print(f"[{reference}] Webhook: Missing user_id or plan_name in metadata for subscription activation.")
-
-            except PaymentTransaction.DoesNotExist:
-                print(f"[{reference}] Webhook: PaymentTransaction not found in DB. Could be a timing issue or an invalid reference.")
-            except Exception as e:
-                print(f"[{reference}] Webhook: Unexpected error during charge.success processing: {e}")
+            # Delegate to the new processing function
+            if process_successful_payment(payment, data):
+                print(f"[{reference}] Webhook: Successfully processed 'charge.success'.")
+                return Response(status=status.HTTP_200_OK)
+            else:
+                print(f"[{reference}] Webhook: Failed to process 'charge.success' internally.")
+                # You might want to return a 500 here if the internal processing failed critically
+                # But for webhooks, it's often safer to return 200 OK to prevent Paystack retries
+                return Response({'message': 'Internal processing failed for success event'}, status=status.HTTP_200_OK)
 
         elif event_type == 'charge.failed':
-            try:
-                payment = PaymentTransaction.objects.get(reference=reference)
-                if payment.status != 'completed': 
-                    payment.status = 'failed'
-                    payment.gateway_response = data.get('gateway_response', data.get('message', 'Payment failed.'))
-                    payment.save()
-                    print(f"[{reference}] Webhook: PaymentTransaction status updated to 'failed'.")
-                else:
-                     print(f"[{reference}] Webhook: Received 'charge.failed' but payment was already 'completed'. Ignoring.")
-            except PaymentTransaction.DoesNotExist:
-                print(f"[{reference}] Webhook: PaymentTransaction not found for failed reference.")
-            except Exception as e:
-                print(f"[{reference}] Webhook: Error processing charge.failed event: {e}")
+            # Delegate to the new processing function
+            if process_failed_payment(payment, data):
+                print(f"[{reference}] Webhook: Successfully processed 'charge.failed'.")
+                return Response(status=status.HTTP_200_OK)
+            else:
+                print(f"[{reference}] Webhook: Failed to process 'charge.failed' internally.")
+                return Response({'message': 'Internal processing failed for failed event'}, status=status.HTTP_200_OK)
 
-        return Response(status=status.HTTP_200_OK)
+        elif event_type == 'charge.abandoned':
+            # You might just log or update status here if needed,
+            # but usually the client-side polling handles showing abandoned status
+            print(f"[{reference}] Webhook: Received 'charge.abandoned' event. No further action taken.")
+            return Response(status=status.HTTP_200_OK)
+
+        else:
+            print(f"[{reference}] Webhook: Unhandled event type: {event_type}")
+            return Response({'message': 'Event type not handled'}, status=status.HTTP_200_OK) # Always return 200 for unhandled events
 
 # A simple placeholder view for the redirect URL
 from django.shortcuts import render

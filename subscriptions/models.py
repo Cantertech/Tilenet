@@ -93,14 +93,7 @@ class PaymentTransaction(models.Model):
 
     status = models.CharField(
         max_length=20,
-        default='pending',
-        choices=[
-            ('pending', 'Pending'),
-            ('successful', 'Successful'),
-            ('failed', 'Failed'),
-            ('reversed', 'Reversed'),
-            ('abandoned', 'Abandoned'),
-        ]
+        
     )
     completed_at = models.DateTimeField(null=True, blank=True)
     paystack_response_status = models.BooleanField(null=True) # Paystack's initial 'status'

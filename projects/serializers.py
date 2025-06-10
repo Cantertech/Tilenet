@@ -26,14 +26,10 @@ class UnitSerializer(serializers.ModelSerializer):
 
 
 class MaterialSerializer(serializers.ModelSerializer):
-    unit = UnitSerializer(read_only=True)
-    unit_id = serializers.PrimaryKeyRelatedField(queryset=Unit.objects.all(), write_only=True, source='unit')
-
     class Meta:
         model = Material
         fields = '__all__'
         read_only_fields = ['user']
-
 
 class DynamicSettingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -138,6 +134,12 @@ class RoomSerializer(serializers.ModelSerializer):
 
 
         return instance
+    
+class MaterialDoesNotExist(Exception):
+    pass
+class MaterialMultipleObjectsReturned(Exception):
+    pass
+
 
 class ProjectMaterialSerializer(serializers.ModelSerializer):
     material = MaterialSerializer(read_only=True)
@@ -147,12 +149,7 @@ class ProjectMaterialSerializer(serializers.ModelSerializer):
     # Changed to read_only as per previous discussion, calculated in view
     quantity = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
-    name = serializers.CharField(
-        max_length=255, required=False, allow_null=False
-    )
-    # Changed to CharField as per previous discussion
     unit = serializers.CharField(max_length=50, required=False, allow_null=True)
-
 
     # Changed to read_only as per previous discussion, calculated in view
     quantity_with_wastage = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -166,10 +163,9 @@ class ProjectMaterialSerializer(serializers.ModelSerializer):
             'material_name',
             'unit', # Now a CharField
             'quantity', 'quantity_with_wastage', # Read-only
-            'name',
         ]
         read_only_fields = [
-            'id', 'project', 'material',
+            'id', 'project', 'material','name',
             'quantity', # Explicitly mark calculated fields as read-only
             'quantity_with_wastage',
         ]
@@ -189,15 +185,20 @@ class ProjectMaterialSerializer(serializers.ModelSerializer):
 
         # Look up the Material object based on the provided name
         try:
+            print(f"Attempting to get Material with name: '{material_name}'") # <-- Added print
             # Use case-insensitive lookup for flexibility
             material = Material.objects.get(name__iexact=material_name)
             print("Material found:", material)
-        except Material.DoesNotExist:
+        except MaterialDoesNotExist: # Changed to MaterialDoesNotExist for explicit mock
             print(f"Error: Material with name '{material_name}' does not exist.")
             raise ValidationError({'material_name': [f"Material with name '{material_name}' does not exist."]})
-        except Material.MultipleObjectsReturned:
+        except MaterialMultipleObjectsReturned: # Changed for explicit mock
             print(f"Error: Multiple materials found with name '{material_name}'.")
             raise ValidationError({'material_name': [f"Multiple materials found with name '{material_name}'."]})
+        except Exception as e: # Catch any other unexpected errors during material lookup
+            print(f"An unexpected error occurred during material lookup: {e}")
+            raise ValidationError({'_detail': f"An unexpected error occurred finding material: {e}"})
+
 
         # Set the material ForeignKey on the ProjectMaterial instance
         validated_data['material'] = material

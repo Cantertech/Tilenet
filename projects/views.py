@@ -47,31 +47,123 @@ room_detail_serializers_map = {
 
 User = get_user_model()
 
+# class ProjectViewSet(viewsets.ModelViewSet):
+#     queryset = Project.objects.all()
+#     serializer_class = ProjectSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return self.queryset.filter(user=self.request.user).prefetch_related(
+#             Prefetch('rooms', queryset=Room.objects.prefetch_related('details')),
+#             'materials__mate',
+#             'workers',
+#         )
+
+#     def perform_create(self, serializer):
+#         instance = serializer.save(user=self.request.user)
+#         project_calculations.calculate_project_totals(instance.id)
+
+#     def perform_update(self, serializer):
+#         instance = serializer.save()
+#         project_calculations.calculate_project_totals(instance.id)
+
+#     def perform_destroy(self, instance):
+#         project_id = instance.id
+#         instance.delete()
+#         project_calculations.calculate_project_totals(project_id)
+import logging
+
+logger = logging.getLogger(__name__)
+
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        # logger.info(f"Retrieving projects for user: {self.request.user.username}")
+        print(f"DEBUG: Retrieving projects for user: {self.request.user.username}")
         return self.queryset.filter(user=self.request.user).prefetch_related(
             Prefetch('rooms', queryset=Room.objects.prefetch_related('details')),
-            'materials__material__unit',
+            'materials__material',
             'workers',
         )
 
     def perform_create(self, serializer):
-        instance = serializer.save(user=self.request.user)
-        project_calculations.calculate_project_totals(instance.id)
+        try:
+            # logger.info(f"Attempting to create project for user {self.request.user.username} with data: {serializer.validated_data}")
+            print(f"DEBUG: Attempting to create project for user {self.request.user.username} with data: {serializer.validated_data}")
+            instance = serializer.save(user=self.request.user)
+            # logger.info(f"Project created with ID: {instance.id}")
+            print(f"DEBUG: Project created with ID: {instance.id}")
+
+            # logger.info(f"Calling calculate_project_totals for new project ID: {instance.id}")
+            print(f"DEBUG: Calling calculate_project_totals for new project ID: {instance.id}")
+            project_calculations.calculate_project_totals(instance.id)
+            # logger.info(f"Calculations completed for new project ID: {instance.id}")
+            print(f"DEBUG: Calculations completed for new project ID: {instance.id}")
+
+        except Exception as e:
+            # logger.error(f"Error creating or calculating project for user {self.request.user.username}: {e}", exc_info=True)
+            print(f"ERROR: An error occurred during project creation or calculation for user {self.request.user.username}: {e}")
+            import traceback
+            traceback.print_exc() # This will print the full traceback to the console
+
+            return Response(
+                {"detail": "An error occurred during project creation or calculation."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def perform_update(self, serializer):
-        instance = serializer.save()
-        project_calculations.calculate_project_totals(instance.id)
+        try:
+            # logger.info(f"Attempting to update project {serializer.instance.id} for user {self.request.user.username} with data: {serializer.validated_data}")
+            print(f"DEBUG: Attempting to update project {serializer.instance.id} for user {self.request.user.username} with data: {serializer.validated_data}")
+            instance = serializer.save()
+            # logger.info(f"Project {instance.id} updated.")
+            print(f"DEBUG: Project {instance.id} updated.")
+
+            # logger.info(f"Calling calculate_project_totals for updated project ID: {instance.id}")
+            print(f"DEBUG: Calling calculate_project_totals for updated project ID: {instance.id}")
+            project_calculations.calculate_project_totals(instance.id)
+            # logger.info(f"Calculations completed for updated project ID: {instance.id}")
+            print(f"DEBUG: Calculations completed for updated project ID: {instance.id}")
+
+        except Exception as e:
+            # logger.error(f"Error updating or calculating project {serializer.instance.id} for user {self.request.user.username}: {e}", exc_info=True)
+            print(f"ERROR: An error occurred during project update or calculation for project {serializer.instance.id}, user {self.request.user.username}: {e}")
+            import traceback
+            traceback.print_exc()
+
+            return Response(
+                {"detail": "An error occurred during project update or calculation."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def perform_destroy(self, instance):
         project_id = instance.id
-        instance.delete()
-        project_calculations.calculate_project_totals(project_id)
+        try:
+            # logger.info(f"Attempting to delete project ID: {project_id} for user: {self.request.user.username}")
+            print(f"DEBUG: Attempting to delete project ID: {project_id} for user: {self.request.user.username}")
+            instance.delete()
+            # logger.info(f"Project ID: {project_id} deleted.")
+            print(f"DEBUG: Project ID: {project_id} deleted.")
 
+            # logger.info(f"Calling calculate_project_totals after deletion for project ID: {project_id} (if applicable)")
+            print(f"DEBUG: Calling calculate_project_totals after deletion for project ID: {project_id} (if applicable)")
+            project_calculations.calculate_project_totals(project_id) # Consider if this is truly needed here
+            # logger.info(f"Post-deletion calculations completed for project ID: {project_id}")
+            print(f"DEBUG: Post-deletion calculations completed for project ID: {project_id}")
+
+        except Exception as e:
+            # logger.error(f"Error deleting project {project_id} for user {self.request.user.username}: {e}", exc_info=True)
+            print(f"ERROR: An error occurred during project deletion for project {project_id}, user {self.request.user.username}: {e}")
+            import traceback
+            traceback.print_exc()
+
+            return Response(
+                {"detail": "An error occurred during project deletion."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class UnitViewSet(viewsets.ModelViewSet):
     queryset = Unit.objects.all()
@@ -409,15 +501,32 @@ class CreateProjectEstimateView(APIView):
 
             # --- Prepare Response ---
             # Fetch the project again with all related data for the response
+            print(f"Fetching project {project_instance.id} for response serialization...")
             response_project = Project.objects.filter(id=project_instance.id).prefetch_related(
-                Prefetch('rooms', queryset=Room.objects.prefetch_related('details')), # Fetch rooms and their details
-                'materials__material__unit', # Fetch materials and their default units if needed for display
-                'workers', # Fetch workers
+                Prefetch('rooms', queryset=Room.objects.prefetch_related('details')),
+                'materials__material',
+                'workers',
             ).first()
 
-            response_serializer = ProjectSerializer(response_project)
-            print("--- Sending Response ---")
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            if not response_project:
+                print(f"ERROR: Project {project_instance.id} could not be re-fetched for response.")
+                return Response({"detail": "Failed to retrieve created project for response."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            print("Project fetched for response. Attempting to serialize...")
+            try:
+                response_serializer = ProjectSerializer(response_project)
+                # Accessing .data immediately triggers the serialization process
+                serialized_data = response_serializer.data
+                print("Project serialized successfully for response.")
+                print("--- Sending Response ---")
+                print(serialized_data)
+                return Response(serialized_data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                print(f"AN ERROR OCCURRED DURING FINAL RESPONSE SERIALIZATION: {e}")
+                import traceback
+                traceback.print_exc() # This will print the detailed traceback
+                return Response({"detail": f"An unexpected error occurred during response generation: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

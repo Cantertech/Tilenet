@@ -63,19 +63,19 @@ CONVERSION_FACTORS_TO_METERS = {
 COVERAGE_RATES_PER_UNIT = {
     'tiling': {
         'cement': decimal.Decimal(1) / decimal.Decimal(6),    
-        'sand': decimal.Decimal(1) /decimal.Decimal(3),        
-        'chemical': decimal.Decimal(1) / decimal.Decimal(41),      
+        'sand': decimal.Decimal(1.4) /decimal.Decimal(6),        
+        'chemical': decimal.Decimal(1) / decimal.Decimal(6.72),      
         'tile cement': decimal.Decimal(1) / decimal.Decimal(4),    
-        'grout': decimal.Decimal(1) / decimal.Decimal(14),         
+        'grout': decimal.Decimal(1) / decimal.Decimal(4.6666),         
         
     },
-# 2 wheel barrow  of sand for 1 bag cement , 8 headpans 
+# 2 wheel barrow  of sand for 1 bag cement , 7 headpans , 1.4 wheelbarrow 
 # //300 wheel barrows  == 150 bags  for tipa large cina bucket 
 # //175 whell barrow  == for small tipa 
-# //for 6 m^2 = 1 cement , 2 wheel barrow 
+# //for 6 m^2 = 1 cement , 1.4 wheel barrow , 7 headpans
 # //for eveery 1 bag cement , 1 tile cent , 4 m^2
 # //6.25 kg of chemical = 14 m^2 x 3
-# //3kg of grout = 14 m^2, ,   
+# //3kg of grout = 14 m^2,
 
     'pavement': {
         'cement': decimal.Decimal(1) / decimal.Decimal(5),         # ≈ 0.2 bags per m²
@@ -202,20 +202,22 @@ def calculate_project_areas_and_save(project_instance):
 
 def convert_wheelbarrows_to_best_unit(wheelbarrows: float) -> tuple[float, str]:
     WHEELBARROWS_PER_LARGE_TIPPER = 300
-    WHEELBARROWS_PER_SMALL_TIPPER = 175
+    WHEELBARROWS_PER_SMALL_TIPPER = 175 # Assuming 1 small tipper is exactly 175 wheelbarrows
     HEADPANS_PER_WHEELBARROW = 8
 
-    if wheelbarrows >= 300:
+    # Start with the largest unit conversion
+    if wheelbarrows >= WHEELBARROWS_PER_LARGE_TIPPER:
         large_tippers = wheelbarrows / WHEELBARROWS_PER_LARGE_TIPPER
         return round(large_tippers, 2), "large tipper"
-    elif 150 <= wheelbarrows <= 180:
-        return 1, "small tipper"
-    elif wheelbarrows >= 180:
-        large_tippers = wheelbarrows / WHEELBARROWS_PER_LARGE_TIPPER
-        return round(large_tippers, 2), "large tipper"
-    elif wheelbarrows >= 1:
+    # Then check for small tippers (quantities between 175 and 300)
+    elif wheelbarrows >= WHEELBARROWS_PER_SMALL_TIPPER: # This covers 175 <= wheelbarrows < 300
+        small_tippers = wheelbarrows / WHEELBARROWS_PER_SMALL_TIPPER
+        return round(small_tippers, 2), "small tipper"
+    # Then for single wheelbarrows (quantities between 1 and 175)
+    elif wheelbarrows >= 1: # This covers 1 <= wheelbarrows < 175
         return round(wheelbarrows, 2), "wheelbarrow"
-    else:
+    # Finally, for quantities less than 1 wheelbarrow
+    else: # This covers 0 <= wheelbarrows < 1
         headpans = wheelbarrows * HEADPANS_PER_WHEELBARROW
         return round(headpans, 2), "headpan"
 
@@ -241,7 +243,7 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
     project_type = project_instance.project_type
     material_name = material_instance.name.lower() # Use lower case for consistent lookup
     
-    material_unit = material_instance.unit.name.lower() if material_instance.unit else "unknown"
+    material_unit = material_instance.unit.lower() if material_instance.unit else "unknown"
 
     wastage_percentage_dec = decimal.Decimal(project_instance.wastage_percentage or 0)
     mortar_thickness_dec = decimal.Decimal(project_instance.mortar_thickness or 0)
@@ -311,17 +313,7 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
         calculated_quantity_raw = relevant_area_dec * coverage_rate_per_unit
         print(f"Calculated raw quantity for '{material_name}': {relevant_area_dec} (area) * {coverage_rate_per_unit} (coverage) = {calculated_quantity_raw}")
 
-    if material_name == 'sand':
-        quantity_in_float = float(calculated_quantity_raw)
-        converted_value, converted_unit = convert_wheelbarrows_to_best_unit(quantity_in_float)
-        # Store or return these values as needed
-        
-        material_instance.calculated_quantity = converted_value
-        material_instance.unit = converted_unit
-        print(f"Sand converted: {converted_value} {converted_unit}")
-    else:
-        material_instance.calculated_quantity = calculated_quantity_raw
-        material_instance.unit = material_unit  # Keep original unit
+    
     wastage_perrc = 0
     if wastage_percentage_dec <= 3.01 :
         if relevant_area_dec <= 55:
@@ -355,21 +347,35 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
             wastage_perrc = decimal.Decimal(10)
 
     quantity_with_wastage = calculated_quantity_raw * wastage_multiplier
+    initial_project_material_unit = project_material_instance.unit.lower() if project_material_instance.unit else "unknown"
+
     print(f"Quantity with wastage: {calculated_quantity_raw} * {wastage_multiplier} = {quantity_with_wastage}")
     if mortar_thickness_dec >= 9.88 :
         if material_name in ['cement','sand','tile cement','chemical']:
             quantity_with_wastage = quantity_with_wastage * (decimal.Decimal(1) + (decimal.Decimal(7) / decimal.Decimal(100)))
     final_quantity = quantity_with_wastage
+    if material_name == 'sand':
+        quantity_in_float = float(calculated_quantity_raw) # Convert Decimal to float for the conversion function
+        converted_value, converted_unit = convert_wheelbarrows_to_best_unit(quantity_in_float)
+
+        # Assign to the ProjectMaterial instance's quantity and unit fields
+        project_material_instance.quantity = decimal.Decimal(str(converted_value)) # Convert back to Decimal for storage
+        project_material_instance.quantity_with_wastage = decimal.Decimal(str(converted_value * float(wastage_multiplier))) # Apply wastage to converted value
+        project_material_instance.unit = converted_unit # Update the unit string on the ProjectMaterial
+        print(f"Sand converted and assigned: {converted_value} {converted_unit}, Qty with wastage: {project_material_instance.quantity_with_wastage}")
+    else:
+        # For non-sand materials, assign the raw and wastage quantities directly
+        project_material_instance.quantity = calculated_quantity_raw
+        project_material_instance.quantity_with_wastage = final_quantity
+       
+        project_material_instance.unit = initial_project_material_unit
+        print(f"Calculated totals for ProjectMaterial ID {project_material_instance.id} (Material: {material_name}, Project: {project_instance.id}): Quantity={project_material_instance.quantity}, Quantity w/ Wastage={project_material_instance.quantity_with_wastage}")
 
     project_instance.wastage_percentage =  wastage_perrc
     print(f'wastage percentage :{wastage_perrc}')
-    project_material_instance.quantity = calculated_quantity_raw
-    project_material_instance.quantity_with_wastage = final_quantity
-
-    project_material_instance.save(update_fields=['quantity', 'quantity_with_wastage'])
     project_instance.save(update_fields=['wastage_percentage'])
-
-    print(f"Calculated totals for ProjectMaterial ID {project_material_instance.id} (Material: {material_name}, Project: {project_instance.id}): Quantity={project_material_instance.quantity}, Quantity w/ Wastage={project_material_instance.quantity_with_wastage}")
+    project_material_instance.save(update_fields=['quantity', 'quantity_with_wastage', 'unit'])
+    print(f"Updated ProjectMaterial ID {project_material_instance.id} with Quantity={project_material_instance.quantity}, Quantity w/ Wastage={project_material_instance.quantity_with_wastage}, Unit={project_material_instance.unit}")
 
 
 def calculate_worker_total_cost_and_save(worker_instance, estimated_days):

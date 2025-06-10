@@ -17,10 +17,10 @@
             padding-right: 5mm;
             /* Keep top and bottom padding as they were */
             padding-top: 15mm;
-            padding-bottom: 15mm; /* Reduced padding for more width usage */
-            line-height: 1.5; /* Slightly reduced line height */
+            padding-bottom: 15mm; 
+            line-height: 1.5; 
             color: #333;
-            background-color: #e3dd95; /* Explicitly white background */
+            background-color: #ffffff; 
         }
         .container {
             width: 100%;
@@ -393,10 +393,10 @@
                         <tr>
                             {# Access fields from ProjectMaterialSerializer output #}
                             <td>{{ forloop.counter }}</td> {# Use forloop.counter for item number #}
-                            <td>{{ item.name|default:"[Material Name]" }}</td>
+                            <td>{{ item.material.name|default:"[Material Name]" }}</td>
                             {# Access nested unit abbreviation from the serialized Material object within ProjectMaterial #}
                            
-                            
+                    
                             {# Use calculated field quantity_with_wastage #}
                             <td>{{ item.quantity_with_wastage|default:0|floatformat:2 }}</td>
                             <td>{{ item.unit|default:"N/A" }}</td> {# Added Unit #}
