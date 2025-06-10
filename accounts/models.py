@@ -1,4 +1,4 @@
-from datetime import timedelta, timezone
+from datetime import timedelta
 import datetime
 import string
 from django.db import models
@@ -8,6 +8,7 @@ import random
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from django.conf import settings
+from django.utils import timezone
 
 
 class AppVersion(models.Model):
@@ -80,7 +81,7 @@ class PasswordResetCode(models.Model):
 class UserSubscription(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscription')
     plan = models.ForeignKey('SubscriptionPlan', on_delete=models.CASCADE, related_name='subscriptions')
-    start_date = models.DateTimeField(auto_now_add=True)
+    start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
     projects_created = models.PositiveIntegerField(default=0)  
     three_d_views_used = models.PositiveIntegerField(default=0)  

@@ -128,7 +128,8 @@ def activate_user_subscription(user_instance, subscription_plan, received_amount
                 print(f"[{reference}] Subscription extended. Usage preserved.")
             else:
                 # Plan expired or no end_date – reset usage and start fresh
-                user_sub.start_date = now
+                if not created: # Only update start_date if it's a new subscription or explicitly needs resetting
+                    user_sub.start_date = now
                 user_sub.end_date = now + timedelta(days=subscription_plan.duration_in_days)
                 user_sub.projects_created = 0
                 user_sub.three_d_views_used = 0
@@ -211,7 +212,7 @@ def process_successful_payment(payment_record: PaymentTransaction, paystack_data
             return False
 
         try:
-            matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs, is_active=True)
+            matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs)
         except SubscriptionPlan.DoesNotExist:
             print(f"[{reference}] No active subscription plan found with price {received_amount_ghs} GHS.")
             # Depending on business logic, this might be a critical error or just a log
