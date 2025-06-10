@@ -16,7 +16,7 @@ import hashlib
 import hmac
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
-from .models import SubscriptionPlan, UserSubscription, PaymentTransaction
+from .models import  PaymentTransaction
 from .serializers import (
     SubscriptionPlanSerializer, UserSubscriptionSerializer,
     PaymentTransactionSerializer, InitiatePaymentSerializer
