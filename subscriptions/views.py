@@ -471,8 +471,6 @@ class InitiatePaymentAPIView(APIView):
 # Assuming you have `requests` imported already
 import requests # Make sure this is imported
 
-
-logger = logging.getLogger(__name__)
 class VerifyPaystackPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -480,12 +478,12 @@ class VerifyPaystackPaymentAPIView(APIView):
         reference = request.data.get("reference")
 
         if not reference:
-            return Response({'error': 'Missing reference.'}, status=400)
+            return Response({'message': 'Reference is required.'}, status=400)
 
         try:
             payment_record = PaymentTransaction.objects.get(reference=reference, user=request.user)
         except PaymentTransaction.DoesNotExist:
-            return Response({'error': 'Payment record not found.'}, status=404)
+            return Response({'message': 'Payment record not found.'}, status=404)
 
         headers = {
             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
@@ -496,153 +494,222 @@ class VerifyPaystackPaymentAPIView(APIView):
 
         try:
             response = requests.get(verify_url, headers=headers)
-            response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
+            response.raise_for_status()
             result = response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Paystack API request failed: {e}")
-            return Response({'error': 'Failed to connect to Paystack or Paystack returned an error.', 'details': str(e)}, status=503)
-        except ValueError as e:
-            print(f"Invalid JSON response from Paystack: {e}")
-            return Response({'error': f'Invalid response from Paystack: {e}'}, status=502)
+        except requests.RequestException:
+            return Response({'message': 'Failed to connect to Paystack.'}, status=503)
+        except ValueError:
+            return Response({'message': 'Invalid response from Paystack.'}, status=502)
 
         if result.get("status") is True and "data" in result:
             data = result["data"]
-            charge_status = data.get("status")
-            paystack_reference = data.get('reference') # Get Paystack's own reference for logging/storage
+            status_from_paystack = data.get("status")
 
-            if charge_status == "success":
-                # Use a database transaction to ensure atomicity
-                with transaction.atomic():
-                    # --- Idempotency Check ---
-                    # Check if the payment was already completed to prevent double processing
-                    if payment_record.status == 'completed':
-                        logger.info(f"[{reference}] Payment already completed. Ignoring duplicate processing.")
-                        return Response({
-                            "payment_status": "success",
-                            "message": "Payment was already successful and processed.",
-                            "data": data
-                        }, status=200)
-
-                    # 2. Verify important details (optional but recommended for security)
-                    paystack_amount_kobo = data.get('amount') # Paystack amount is in kobo/pesewas
-                    if paystack_amount_kobo is None:
-                        logger.error(f"[{reference}] Paystack data missing 'amount'. Cannot verify.")
-                        # It's better to return an error response here if critical data is missing
-                        return Response({'error': 'Paystack response missing amount data.'}, status=500)
-
-                    # Convert Paystack amount (in kobo/pesewas) to GHS
-                    # Assuming 100 pesewas = 1 GHS (similar to 100 kobo = 1 Naira)
-                    received_amount_ghs = paystack_amount_kobo / 100.0 
-
-                    # Compare with the amount you stored (which is in GHS)
-                    # Use a small tolerance for floating point comparisons if necessary
-                    if abs(received_amount_ghs - float(payment_record.amount)) > 0.01: # Check for tolerance, e.g., 1 pesewa
-                        logger.warning(f"[{reference}] Amount mismatch! Expected {payment_record.amount} GHS, received {received_amount_ghs} GHS.")
-                        payment_record.status = 'amount_mismatch'
-                        payment_record.gateway_response = f"Amount mismatch: Expected {payment_record.amount}, Received {received_amount_ghs}"
-                        payment_record.paystack_response_status = charge_status # Still record the status from Paystack
-                        payment_record.save()
-                        # Return an error to the client, as the amount didn't match what was expected
-                        return Response({
-                            "payment_status": "failed",
-                            "message": "Amount mismatch. Payment verification failed.",
-                            "expected_amount": payment_record.amount,
-                            "received_amount": received_amount_ghs
-                        }, status=400) # Bad Request or Conflict
-
-                    # 3. Update the PaymentTransaction status
-                    payment_record.status = 'completed'
-                    payment_record.completed_at = timezone.now()
-                    payment_record.paystack_response_status = charge_status
-                    payment_record.gateway_response = data.get('gateway_response')
-                    payment_record.reference = paystack_reference # Store Paystack's reference again if different from yours
-                    payment_record.save()
-                    logger.info(f"[{reference}] PaymentTransaction status updated to 'completed'.")
-
-                    # 4. Activate user's subscription
-                    user_instance = payment_record.user 
-
-                    if not user_instance:
-                        logger.error(f"[{reference}] No user associated with this payment record. This should not happen.")
-                        # This is a critical internal error, log and potentially alert
-                        return Response({'error': 'Internal server error: User not found for payment record.'}, status=500)
-
-                    try:
-                        # Find the subscription plan based on the received amount
-                        # Consider if multiple plans can have the same price or if you need a specific plan ID
-                        matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs)
-                    except SubscriptionPlan.DoesNotExist:
-                        logger.error(f"[{reference}] No active subscription plan found with price {received_amount_ghs} GHS.")
-                        # This is a business logic error. The payment was successful but for an unknown plan.
-                        # You might want to refund or manually review this.
-                        return Response({
-                            "payment_status": "success_but_no_plan",
-                            "message": "Payment successful, but no matching subscription plan found for this amount.",
-                            "data": data
-                        }, status=200) # Still 200, as Paystack payment was success, but internal issue
-
-                    # --- Subscription Activation Logic ---
-                    # Check if the user already has an active subscription of this type
-                    # You might have a UserSubscription model
-                    
-                # If all steps within the transaction are successful
+            if status_from_paystack == "success":
                 return Response({
-                    "payment_status": "success",
-                    "message": "Payment was successful and subscription activated.",
+                    "message": "Payment verified successfully.",
+                    "status": "success",
                     "data": data
                 }, status=200)
 
-            elif charge_status == "failed":
-                # Update payment record status
-                payment_record.status = 'failed'
-                payment_record.gateway_response = data.get('gateway_response')
-                payment_record.paystack_response_status = charge_status
-                payment_record.save()
-                logger.info(f"[{reference}] Payment failed. Status updated for record.")
+            elif status_from_paystack == "failed":
                 return Response({
-                    "payment_status": "failed",
-                    "message": "Payment failed. Please try again or contact support.",
+                    "message": "Payment failed.",
+                    "status": "failed",
                     "data": data
                 }, status=400)
 
-            elif charge_status == "abandoned":
-                payment_record.status = 'abandoned'
-                payment_record.gateway_response = data.get('gateway_response')
-                payment_record.paystack_response_status = charge_status
-                payment_record.save()
-                logger.info(f"[{reference}] User abandoned the payment. Status updated for record.")
+            elif status_from_paystack == "abandoned":
                 return Response({
-                    "payment_status": "abandoned",
-                    "message": "User abandoned the payment. Please complete the payment.",
+                    "message": "Payment was abandoned.",
+                    "status": "abandoned",
                     "data": data
-                }, status=408) # 408 Request Timeout is appropriate for abandoned
+                }, status=408)
+
             else:
-                # Any other status from Paystack (e.g., 'pending', 'reversed', etc.)
-                payment_record.status = charge_status
-                payment_record.gateway_response = data.get('gateway_response')
-                payment_record.paystack_response_status = charge_status
-                payment_record.save()
-                logger.info(f"[{reference}] Payment status from Paystack: {charge_status}. Record updated.")
                 return Response({
-                    "payment_status": charge_status,
-                    "message": f"Payment is currently {charge_status}. Please wait or try again later.",
+                    "message": f"Payment is currently {status_from_paystack}.",
+                    "status": status_from_paystack,
                     "data": data
-                }, status=202) # 202 Accepted for processing
+                }, status=202)
 
         else:
-            # Paystack verification failed (e.g., status is False or data is missing)
-            error_message = result.get("message", "Unknown error from Paystack during verification.")
-            logger.error(f"Paystack verification failed for reference {reference}: {error_message}. Full result: {result}")
-            # Update payment record status to reflect verification failure if it's not already
-            if payment_record.status not in ['completed', 'failed', 'abandoned', 'amount_mismatch']:
-                 payment_record.status = 'verification_failed'
-                 payment_record.gateway_response = error_message
-                 payment_record.save()
             return Response({
-                "payment_status": "error",
-                "message": f"Paystack verification failed: {error_message}",
+                "message": result.get("message", "Verification failed."),
+                "status": "error",
                 "data": result
             }, status=500)
+# logger = logging.getLogger(__name__)
+# class VerifyPaystackPaymentAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, *args, **kwargs):
+#         reference = request.data.get("reference")
+
+#         if not reference:
+#             return Response({'error': 'Missing reference.'}, status=400)
+
+#         try:
+#             payment_record = PaymentTransaction.objects.get(reference=reference, user=request.user)
+#         except PaymentTransaction.DoesNotExist:
+#             return Response({'error': 'Payment record not found.'}, status=404)
+
+#         headers = {
+#             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+#             "Content-Type": "application/json"
+#         }
+
+#         verify_url = f"https://api.paystack.co/transaction/verify/{reference}"
+
+#         try:
+#             response = requests.get(verify_url, headers=headers)
+#             response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
+#             result = response.json()
+#         except requests.exceptions.RequestException as e:
+#             print(f"Paystack API request failed: {e}")
+#             return Response({'error': 'Failed to connect to Paystack or Paystack returned an error.', 'details': str(e)}, status=503)
+#         except ValueError as e:
+#             print(f"Invalid JSON response from Paystack: {e}")
+#             return Response({'error': f'Invalid response from Paystack: {e}'}, status=502)
+
+#         if result.get("status") is True and "data" in result:
+#             data = result["data"]
+#             charge_status = data.get("status")
+#             paystack_reference = data.get('reference') # Get Paystack's own reference for logging/storage
+
+#             if charge_status == "success":
+#                 # Use a database transaction to ensure atomicity
+#                 with transaction.atomic():
+#                     # --- Idempotency Check ---
+#                     # Check if the payment was already completed to prevent double processing
+#                     if payment_record.status == 'completed':
+#                         logger.info(f"[{reference}] Payment already completed. Ignoring duplicate processing.")
+#                         return Response({
+#                             "payment_status": "success",
+#                             "message": "Payment was already successful and processed.",
+#                             "data": data
+#                         }, status=200)
+
+#                     # 2. Verify important details (optional but recommended for security)
+#                     paystack_amount_kobo = data.get('amount') # Paystack amount is in kobo/pesewas
+#                     if paystack_amount_kobo is None:
+#                         logger.error(f"[{reference}] Paystack data missing 'amount'. Cannot verify.")
+#                         # It's better to return an error response here if critical data is missing
+#                         return Response({'error': 'Paystack response missing amount data.'}, status=500)
+
+#                     # Convert Paystack amount (in kobo/pesewas) to GHS
+#                     # Assuming 100 pesewas = 1 GHS (similar to 100 kobo = 1 Naira)
+#                     received_amount_ghs = paystack_amount_kobo / 100.0 
+
+#                     # Compare with the amount you stored (which is in GHS)
+#                     # Use a small tolerance for floating point comparisons if necessary
+#                     if abs(received_amount_ghs - float(payment_record.amount)) > 0.01: # Check for tolerance, e.g., 1 pesewa
+#                         logger.warning(f"[{reference}] Amount mismatch! Expected {payment_record.amount} GHS, received {received_amount_ghs} GHS.")
+#                         payment_record.status = 'amount_mismatch'
+#                         payment_record.gateway_response = f"Amount mismatch: Expected {payment_record.amount}, Received {received_amount_ghs}"
+#                         payment_record.paystack_response_status = charge_status # Still record the status from Paystack
+#                         payment_record.save()
+#                         # Return an error to the client, as the amount didn't match what was expected
+#                         return Response({
+#                             "payment_status": "failed",
+#                             "message": "Amount mismatch. Payment verification failed.",
+#                             "expected_amount": payment_record.amount,
+#                             "received_amount": received_amount_ghs
+#                         }, status=400) # Bad Request or Conflict
+
+#                     # 3. Update the PaymentTransaction status
+#                     payment_record.status = 'completed'
+#                     payment_record.completed_at = timezone.now()
+#                     payment_record.paystack_response_status = charge_status
+#                     payment_record.gateway_response = data.get('gateway_response')
+#                     payment_record.reference = paystack_reference # Store Paystack's reference again if different from yours
+#                     payment_record.save()
+#                     logger.info(f"[{reference}] PaymentTransaction status updated to 'completed'.")
+
+#                     # 4. Activate user's subscription
+#                     user_instance = payment_record.user 
+
+#                     if not user_instance:
+#                         logger.error(f"[{reference}] No user associated with this payment record. This should not happen.")
+#                         # This is a critical internal error, log and potentially alert
+#                         return Response({'error': 'Internal server error: User not found for payment record.'}, status=500)
+
+#                     try:
+#                         # Find the subscription plan based on the received amount
+#                         # Consider if multiple plans can have the same price or if you need a specific plan ID
+#                         matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs)
+#                     except SubscriptionPlan.DoesNotExist:
+#                         logger.error(f"[{reference}] No active subscription plan found with price {received_amount_ghs} GHS.")
+#                         # This is a business logic error. The payment was successful but for an unknown plan.
+#                         # You might want to refund or manually review this.
+#                         return Response({
+#                             "payment_status": "success_but_no_plan",
+#                             "message": "Payment successful, but no matching subscription plan found for this amount.",
+#                             "data": data
+#                         }, status=200) # Still 200, as Paystack payment was success, but internal issue
+
+#                     # --- Subscription Activation Logic ---
+#                     # Check if the user already has an active subscription of this type
+#                     # You might have a UserSubscription model
+                    
+#                 # If all steps within the transaction are successful
+#                 return Response({
+#                     "payment_status": "success",
+#                     "message": "Payment was successful and subscription activated.",
+#                     "data": data
+#                 }, status=200)
+
+#             elif charge_status == "failed":
+#                 # Update payment record status
+#                 payment_record.status = 'failed'
+#                 payment_record.gateway_response = data.get('gateway_response')
+#                 payment_record.paystack_response_status = charge_status
+#                 payment_record.save()
+#                 logger.info(f"[{reference}] Payment failed. Status updated for record.")
+#                 return Response({
+#                     "payment_status": "failed",
+#                     "message": "Payment failed. Please try again or contact support.",
+#                     "data": data
+#                 }, status=400)
+
+#             elif charge_status == "abandoned":
+#                 payment_record.status = 'abandoned'
+#                 payment_record.gateway_response = data.get('gateway_response')
+#                 payment_record.paystack_response_status = charge_status
+#                 payment_record.save()
+#                 logger.info(f"[{reference}] User abandoned the payment. Status updated for record.")
+#                 return Response({
+#                     "payment_status": "abandoned",
+#                     "message": "User abandoned the payment. Please complete the payment.",
+#                     "data": data
+#                 }, status=408) # 408 Request Timeout is appropriate for abandoned
+#             else:
+#                 # Any other status from Paystack (e.g., 'pending', 'reversed', etc.)
+#                 payment_record.status = charge_status
+#                 payment_record.gateway_response = data.get('gateway_response')
+#                 payment_record.paystack_response_status = charge_status
+#                 payment_record.save()
+#                 logger.info(f"[{reference}] Payment status from Paystack: {charge_status}. Record updated.")
+#                 return Response({
+#                     "payment_status": charge_status,
+#                     "message": f"Payment is currently {charge_status}. Please wait or try again later.",
+#                     "data": data
+#                 }, status=202) # 202 Accepted for processing
+
+#         else:
+#             # Paystack verification failed (e.g., status is False or data is missing)
+#             error_message = result.get("message", "Unknown error from Paystack during verification.")
+#             logger.error(f"Paystack verification failed for reference {reference}: {error_message}. Full result: {result}")
+#             # Update payment record status to reflect verification failure if it's not already
+#             if payment_record.status not in ['completed', 'failed', 'abandoned', 'amount_mismatch']:
+#                  payment_record.status = 'verification_failed'
+#                  payment_record.gateway_response = error_message
+#                  payment_record.save()
+#             return Response({
+#                 "payment_status": "error",
+#                 "message": f"Paystack verification failed: {error_message}",
+#                 "data": result
+#             }, status=500)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
