@@ -618,7 +618,7 @@ class VerifyPaystackPaymentAPIView(APIView):
             # Use a database transaction to ensure atomicity
             # If any step fails, all changes are rolled back.
             with transaction.atomic():
-                if status_from_paystack == "success":
+                if status_from_paystack == "success"  :
                     # Update the payment record details
                     payment_record.status = 'completed'
                     payment_record.completed_at = timezone.now()
@@ -941,77 +941,77 @@ def verify_paystack_otp(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 # You could also turn this into an APIView, but for a webhook, direct @csrf_exempt and HttpResponse is common.
 # Example if you wanted webhook as APIView:
-@method_decorator(csrf_exempt, name='dispatch')
-class PaystackWebhookAPIView(APIView):
-    permission_classes = [AllowAny]
+# @method_decorator(csrf_exempt, name='dispatch')
+# class PaystackWebhookAPIView(APIView):
+#     permission_classes = [AllowAny]
 
-    def post(self, request, *args, **kwargs):
-        payload = request.body
-        paystack_signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
+#     def post(self, request, *args, **kwargs):
+#         payload = request.body
+#         paystack_signature = request.META.get('HTTP_X_PAYSTACK_SIGNATURE')
 
-        if not paystack_signature:
-            print("Webhook: No X-Paystack-Signature header.")
-            return Response({'message': 'No X-Paystack-Signature header'}, status=status.HTTP_400_BAD_REQUEST)
+#         if not paystack_signature:
+#             print("Webhook: No X-Paystack-Signature header.")
+#             return Response({'message': 'No X-Paystack-Signature header'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Verify the webhook signature
-        calculated_signature = hmac.new(
-            settings.PAYSTACK_SECRET_KEY.encode('utf-8'),
-            payload,
-            hashlib.sha512
-        ).hexdigest()
+#         # Verify the webhook signature
+#         calculated_signature = hmac.new(
+#             settings.PAYSTACK_SECRET_KEY.encode('utf-8'),
+#             payload,
+#             hashlib.sha512
+#         ).hexdigest()
 
-        if not hmac.compare_digest(calculated_signature, paystack_signature):
-            print("Webhook: Invalid X-Paystack-Signature.")
-            return Response({'message': 'Invalid X-Paystack-Signature'}, status=status.HTTP_400_BAD_REQUEST)
+#         if not hmac.compare_digest(calculated_signature, paystack_signature):
+#             print("Webhook: Invalid X-Paystack-Signature.")
+#             return Response({'message': 'Invalid X-Paystack-Signature'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            event = json.loads(payload)
-        except json.JSONDecodeError:
-            print("Webhook: Invalid JSON payload.")
-            return Response({'message': 'Invalid JSON payload'}, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             event = json.loads(payload)
+#         except json.JSONDecodeError:
+#             print("Webhook: Invalid JSON payload.")
+#             return Response({'message': 'Invalid JSON payload'}, status=status.HTTP_400_BAD_REQUEST)
 
-        event_type = event.get('event')
-        data = event.get('data')
-        reference = data.get('reference')
+#         event_type = event.get('event')
+#         data = event.get('data')
+#         reference = data.get('reference')
 
-        print(f"Webhook Received: Event '{event_type}' for reference '{reference}'.")
+#         print(f"Webhook Received: Event '{event_type}' for reference '{reference}'.")
 
-        try:
-            # Retrieve the payment record once
-            payment = PaymentTransaction.objects.get(reference=reference)
-        except PaymentTransaction.DoesNotExist:
-            print(f"[{reference}] Webhook: PaymentTransaction not found in DB. Could be a timing issue or an invalid reference.")
-            return Response({'message': 'Payment record not found'}, status=status.HTTP_404_NOT_FOUND) # Return 404 if record not found
+#         try:
+#             # Retrieve the payment record once
+#             payment = PaymentTransaction.objects.get(reference=reference)
+#         except PaymentTransaction.DoesNotExist:
+#             print(f"[{reference}] Webhook: PaymentTransaction not found in DB. Could be a timing issue or an invalid reference.")
+#             return Response({'message': 'Payment record not found'}, status=status.HTTP_404_NOT_FOUND) # Return 404 if record not found
 
-        if event_type == 'charge.success':
-            # Delegate to the new processing function
-            if process_successful_payment(payment, data):
-                print(f"[{reference}] Webhook: Successfully processed 'charge.success'.")
-                return Response(status=status.HTTP_200_OK)
-            else:
-                print(f"[{reference}] Webhook: Failed to process 'charge.success' internally.")
-                # You might want to return a 500 here if the internal processing failed critically
-                # But for webhooks, it's often safer to return 200 OK to prevent Paystack retries
-                return Response({'message': 'Internal processing failed for success event'}, status=status.HTTP_200_OK)
+#         if event_type == 'charge.success':
+#             # Delegate to the new processing function
+#             if process_successful_payment(payment, data):
+#                 print(f"[{reference}] Webhook: Successfully processed 'charge.success'.")
+#                 return Response(status=status.HTTP_200_OK)
+#             else:
+#                 print(f"[{reference}] Webhook: Failed to process 'charge.success' internally.")
+#                 # You might want to return a 500 here if the internal processing failed critically
+#                 # But for webhooks, it's often safer to return 200 OK to prevent Paystack retries
+#                 return Response({'message': 'Internal processing failed for success event'}, status=status.HTTP_200_OK)
 
-        elif event_type == 'charge.failed':
-            # Delegate to the new processing function
-            if process_failed_payment(payment, data):
-                print(f"[{reference}] Webhook: Successfully processed 'charge.failed'.")
-                return Response(status=status.HTTP_200_OK)
-            else:
-                print(f"[{reference}] Webhook: Failed to process 'charge.failed' internally.")
-                return Response({'message': 'Internal processing failed for failed event'}, status=status.HTTP_200_OK)
+#         elif event_type == 'charge.failed':
+#             # Delegate to the new processing function
+#             if process_failed_payment(payment, data):
+#                 print(f"[{reference}] Webhook: Successfully processed 'charge.failed'.")
+#                 return Response(status=status.HTTP_200_OK)
+#             else:
+#                 print(f"[{reference}] Webhook: Failed to process 'charge.failed' internally.")
+#                 return Response({'message': 'Internal processing failed for failed event'}, status=status.HTTP_200_OK)
 
-        elif event_type == 'charge.abandoned':
-            # You might just log or update status here if needed,
-            # but usually the client-side polling handles showing abandoned status
-            print(f"[{reference}] Webhook: Received 'charge.abandoned' event. No further action taken.")
-            return Response(status=status.HTTP_200_OK)
+#         elif event_type == 'charge.abandoned':
+#             # You might just log or update status here if needed,
+#             # but usually the client-side polling handles showing abandoned status
+#             print(f"[{reference}] Webhook: Received 'charge.abandoned' event. No further action taken.")
+#             return Response(status=status.HTTP_200_OK)
 
-        else:
-            print(f"[{reference}] Webhook: Unhandled event type: {event_type}")
-            return Response({'message': 'Event type not handled'}, status=status.HTTP_200_OK) # Always return 200 for unhandled events
+#         else:
+#             print(f"[{reference}] Webhook: Unhandled event type: {event_type}")
+#             return Response({'message': 'Event type not handled'}, status=status.HTTP_200_OK) # Always return 200 for unhandled events
 
 # A simple placeholder view for the redirect URL
 from django.shortcuts import render
