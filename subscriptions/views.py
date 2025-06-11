@@ -646,27 +646,41 @@ class VerifyPaystackPaymentAPIView(APIView):
                             "data": data
                         }, status=200) # Still 200, as Paystack payment was success.
 
-                    # Upgrade or renew the subscription based on the matched plan
-                    activation_successful = activate_user_subscription(
-                        user_instance=request.user,
-                        subscription_plan=matched_plan,
-                        payment_transaction=payment_record
-                    )
+                    user_sub, created = UserSubscription.objects.get_or_create(user=request.user)
+                    now = timezone.now()
 
-                    if activation_successful:
-                        return Response({
-                            "message": "Payment verified and subscription activated/updated successfully.",
-                            "status": "success",
-                            "data": data
-                        }, status=200)
+                    user_sub.plan = matched_plan
+                    user_sub.payment_status = 'Paid'
+                    user_sub.is_active = True
+                    user_sub.is_trial_active = False # End trial if a paid subscription is made
+                    user_sub.last_payment = payment_record # Link to the payment transaction
+
+                    # Determine the new end date
+                    if user_sub.end_date and user_sub.end_date > now:
+                        # Extend current subscription from its existing end_date
+                        user_sub.end_date += timezone.timedelta(days=matched_plan.duration_in_days)
                     else:
-                        # Handle cases where subscription activation failed for an internal reason
-                        # after successful payment. This is critical.
-                        return Response({
-                            "message": "Payment successful, but subscription activation failed. Please contact support.",
-                            "status": "internal_subscription_error",
-                            "data": data
-                        }, status=500)
+                        # If expired or no existing end_date, start from now
+                        user_sub.start_date = now
+                        user_sub.end_date = now + timezone.timedelta(days=matched_plan.duration_in_days)
+                        # Optionally, reset usage if a subscription starts fresh after being expired
+                        # user_sub.projects_created = 0
+                        # user_sub.three_d_views_used = 0
+                        # user_sub.manual_estimates_used = 0
+
+                    # Update limits by adding them (additive/top-up logic)
+                    user_sub.project_limit += matched_plan.project_limit
+                    user_sub.three_d_views_limit += matched_plan.three_d_view_limit
+                    user_sub.manual_estimate_limit += matched_plan.manual_estimate_limit
+
+                    user_sub.save()
+                    # --- SIMPLE SUBSCRIPTION LOGIC ENDS HERE ---
+
+                    return Response({
+                        "message": "Payment verified and subscription activated/updated successfully.",
+                        "status": "success",
+                        "data": data
+                    }, status=200)
 
                 elif status_from_paystack == "failed":
                     payment_record.status = 'failed'
