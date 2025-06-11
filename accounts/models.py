@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from django.conf import settings
 from django.utils import timezone
+from subscriptions.models import PaymentTransaction
 
 
 class AppVersion(models.Model):
@@ -96,6 +97,7 @@ class UserSubscription(models.Model):
         default='Pending'
     )
     is_trial_active = models.BooleanField(default=True)
+    last_payment = models.ForeignKey(PaymentTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='activated_subscriptions')
 
     def save(self, *args, **kwargs):
         if not self.end_date:
@@ -125,17 +127,42 @@ class UserSubscription(models.Model):
 
     
     
-    def upgrade_subscription(self, new_plan):
-        """Upgrade the subscription plan by adding limits and extending duration."""
-        
+    def upgrade_or_renew_subscription(self, new_plan, payment_transaction):
+        """
+        Upgrades or renews the subscription plan.
+        If current subscription is still active, extend end date.
+        If expired or no active subscription, start new duration from now.
+        """
         self.plan = new_plan
-        self.end_date += timedelta(days=new_plan.duration_in_days)  # Extend the duration
+        self.payment_status = 'Paid'
+        self.last_payment = payment_transaction
+        self.is_active = True # Ensure subscription is active upon successful payment
+        self.is_trial_active = False # End trial if a paid subscription is made
 
-        # Add the new limits without resetting the current usage
-        self.projects_created = min(self.projects_created, new_plan.project_limit)
-        self.three_d_views_used = min(self.three_d_views_used, new_plan.three_d_view_limit)
+        # Determine the start date for the new period
+        if self.end_date and self.end_date > timezone.now():
+            # If current subscription is still active, extend from current end_date
+            self.end_date = self.end_date + timedelta(days=new_plan.duration_in_days)
+        else:
+            # If expired or no active subscription, start from now
+            self.start_date = timezone.now()
+            self.end_date = self.start_date + timedelta(days=new_plan.duration_in_days)
+
+        # Update limits based on the new plan
+        # It's better to reset usage counters to 0 when a new plan is applied,
+        # or have a more complex logic for prorating/carrying over.
+        # For simplicity, let's assume usage resets or new limits apply.
+        self.project_limit = new_plan.project_limit
+        self.three_d_views_limit = new_plan.three_d_view_limit
+        self.manual_estimate_limit = new_plan.manual_estimate_limit
+
+        # Reset usage counters if a new subscription period starts or plan changes significantly
+        # This depends on your business logic. For now, setting to 0.
+        self.projects_created = 0
+        self.three_d_views_used = 0
+        self.manual_estimates_used = 0
+
         self.save()
-
 
     def can_use_feature(self, feature_type):
         """Check if the user can use a specific feature based on their subscription limits."""

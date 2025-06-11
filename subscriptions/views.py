@@ -47,63 +47,63 @@ from accounts.models import  SubscriptionPlan, UserSubscription # Import your mo
 from datetime import timedelta
 from django.utils import timezone
 
-# def activate_user_subscription(user_instance, subscription_plan, received_amount_ghs, reference):
-#     """
-#     Activates or updates a user's subscription based on the selected plan.
-#     Respects unused limits unless the subscription has expired.
-#     """
-#     print(f"[{reference}] Activating subscription for user {user_instance.id} with plan '{subscription_plan.name}'...")
+def activate_user_subscription(user_instance, subscription_plan, reference):
+    """
+    Activates or updates a user's subscription based on the selected plan.
+    Respects unused limits unless the subscription has expired.
+    """
+    print(f"[{reference}] Activating subscription for user {user_instance.id} with plan '{subscription_plan.name}'...")
 
-#     try:
-#         user_sub, created = UserSubscription.objects.get_or_create(user=user_instance)
-#         now = timezone.now()
+    try:
+        user_sub, created = UserSubscription.objects.get_or_create(user=user_instance)
+        now = timezone.now()
 
-#         # Common updates
-#         user_sub.plan = subscription_plan
-#         user_sub.payment_status = 'Paid'
-#         user_sub.is_active = True
-#         user_sub.is_trial_active = False
+        # Common updates
+        user_sub.plan = subscription_plan
+        user_sub.payment_status = 'Paid'
+        user_sub.is_active = True
+        user_sub.is_trial_active = False
 
-#         if subscription_plan.duration_in_days > 0:
-#             # Time-based plan (e.g., Free, Basic, Contractor)
-#             if user_sub.end_date and user_sub.end_date > now:
-#                 # Extend current subscription from end_date, usage remains untouched
-#                 user_sub.end_date += timedelta(days=subscription_plan.duration_in_days)
-#                 print(f"[{reference}] Subscription extended. Usage preserved.")
-#             else:
-#                 # Plan expired or no end_date – reset usage and start fresh
-#                 user_sub.start_date = now
-#                 user_sub.end_date = now + timedelta(days=subscription_plan.duration_in_days)
-#                 user_sub.projects_created = 0
-#                 user_sub.three_d_views_used = 0
-#                 user_sub.manual_estimates_used = 0
-#                 print(f"[{reference}] Subscription renewed. Usage counters reset.")
+        if subscription_plan.duration_in_days > 0:
+            # Time-based plan (e.g., Free, Basic, Contractor)
+            if user_sub.end_date and user_sub.end_date > now:
+                # Extend current subscription from end_date, usage remains untouched
+                user_sub.end_date += timedelta(days=subscription_plan.duration_in_days)
+                print(f"[{reference}] Subscription extended. Usage preserved.")
+            else:
+                # Plan expired or no end_date – reset usage and start fresh
+                user_sub.start_date = now
+                user_sub.end_date = now + timedelta(days=subscription_plan.duration_in_days)
+                user_sub.projects_created = 0
+                user_sub.three_d_views_used = 0
+                user_sub.manual_estimates_used = 0
+                print(f"[{reference}] Subscription renewed. Usage counters reset.")
 
-#             user_sub.project_limit = subscription_plan.project_limit
-#             user_sub.three_d_views_limit = subscription_plan.three_d_view_limit
-#             user_sub.manual_estimate_limit = subscription_plan.manual_estimate_limit
+            user_sub.project_limit = subscription_plan.project_limit
+            user_sub.three_d_views_limit = subscription_plan.three_d_view_limit
+            user_sub.manual_estimate_limit = subscription_plan.manual_estimate_limit
 
-#         elif subscription_plan.name == 'Pay-Per-Use':
-#             user_sub.project_limit += subscription_plan.project_limit
-#             user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
-#             user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
-#             print(f"[{reference}] Pay-Per-Use plan purchased. Limits incremented.")
+        elif subscription_plan.name == 'Pay-Per-Use':
+            user_sub.project_limit += subscription_plan.project_limit
+            user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
+            user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
+            print(f"[{reference}] Pay-Per-Use plan purchased. Limits incremented.")
 
-#         elif subscription_plan.name == 'Add-On Pack':
-#             user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
-#             user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
-#             print(f"[{reference}] Add-On Pack applied. Extra features added.")
+        elif subscription_plan.name == 'Add-On Pack':
+            user_sub.three_d_views_limit += subscription_plan.three_d_view_limit
+            user_sub.manual_estimate_limit += subscription_plan.manual_estimate_limit
+            print(f"[{reference}] Add-On Pack applied. Extra features added.")
 
-#         else:
-#             print(f"[{reference}] Unrecognized plan: {subscription_plan.name} (ID: {subscription_plan.id})")
+        else:
+            print(f"[{reference}] Unrecognized plan: {subscription_plan.name} (ID: {subscription_plan.id})")
 
-#         user_sub.save()
-#         print(f"[{reference}] Subscription for user {user_instance.email} saved.")
-#         return True
+        user_sub.save()
+        print(f"[{reference}] Subscription for user {user_instance.email} saved.")
+        return True
 
-#     except Exception as e:
-#         print(f"[{reference}] Error activating subscription for user {user_instance.email}: {e}")
-#         return False
+    except Exception as e:
+        print(f"[{reference}] Error activating subscription for user {user_instance.email}: {e}")
+        return False
     
 def activate_user_subscription(user_instance, subscription_plan, received_amount_ghs, reference):
     """
@@ -471,6 +471,99 @@ class InitiatePaymentAPIView(APIView):
 # Assuming you have `requests` imported already
 import requests # Make sure this is imported
 
+# class VerifyPaystackPaymentAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, *args, **kwargs):
+#         reference = request.data.get("reference")
+
+#         if not reference:
+#             return Response({'message': 'Reference is required.'}, status=400)
+
+#         try:
+#             payment_record = PaymentTransaction.objects.get(reference=reference, user=request.user)
+#         except PaymentTransaction.DoesNotExist:
+#             return Response({'message': 'Payment record not found.'}, status=404)
+
+#         headers = {
+#             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+#             "Content-Type": "application/json"
+#         }
+
+#         verify_url = f"https://api.paystack.co/transaction/verify/{reference}"
+
+#         try:
+#             response = requests.get(verify_url, headers=headers)
+#             response.raise_for_status()
+#             result = response.json()
+#         except requests.RequestException:
+#             return Response({'message': 'Failed to connect to Paystack.'}, status=503)
+#         except ValueError:
+#             return Response({'message': 'Invalid response from Paystack.'}, status=502)
+
+#         if result.get("status") is True and "data" in result:
+#             data = result["data"]
+#             status_from_paystack = data.get("status")
+
+#             if status_from_paystack == "success":
+#                 payment_record.status = 'completed'
+#                 payment_record.completed_at = timezone.now()
+#                 payment_record.paystack_response_status = status_from_paystack
+#                 payment_record.gateway_response = data.get('gateway_response')
+#                 payment_record.save()
+#                 paystack_amount_kobo = data.get('amount')
+                
+#                 received_amount_ghs = paystack_amount_kobo / 100.0 
+                
+
+#                 # user_instance = payment_record.user
+#                 try:
+#                     # Find the subscription plan based on the received amount
+#                     # Consider if multiple plans can have the same price or if you need a specific plan ID
+#                     matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs)
+#                 except SubscriptionPlan.DoesNotExist:
+#                     return Response({
+#                         "payment_status": "success_but_no_plan",
+#                         "message": "Payment successful, but no matching subscription plan found for this amount.",
+#                         "data": data
+#                     }, status=200) # Still 200, as Paystack payment was success, but internal issue
+          
+
+#                 return Response({
+#                     "message": "Payment verified successfully.",
+#                     "status": "success",
+#                     "data": data
+#                 }, status=200)
+
+#             elif status_from_paystack == "failed":
+#                 return Response({
+#                     "message": "Payment failed.",
+#                     "status": "failed",
+#                     "data": data
+#                 }, status=400)
+
+#             elif status_from_paystack == "abandoned":
+#                 return Response({
+#                     "message": "Payment was abandoned.",
+#                     "status": "abandoned",
+#                     "data": data
+#                 }, status=408)
+
+#             else:
+#                 return Response({
+#                     "message": f"Payment is currently {status_from_paystack}.",
+#                     "status": status_from_paystack,
+#                     "data": data
+#                 }, status=202)
+
+#         else:
+#             return Response({
+#                 "message": result.get("message", "Verification failed."),
+#                 "status": "error",
+#                 "data": result
+#             }, status=500)
+
+
 class VerifyPaystackPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -481,9 +574,18 @@ class VerifyPaystackPaymentAPIView(APIView):
             return Response({'message': 'Reference is required.'}, status=400)
 
         try:
+            # Ensure the payment record belongs to the authenticated user
             payment_record = PaymentTransaction.objects.get(reference=reference, user=request.user)
         except PaymentTransaction.DoesNotExist:
-            return Response({'message': 'Payment record not found.'}, status=404)
+            return Response({'message': 'Payment record not found for this user.'}, status=404)
+
+        # Prevent re-verification of already completed payments if your logic requires it
+        if payment_record.status == 'completed':
+            return Response({
+                'message': 'Payment has already been verified and completed.',
+                'status': 'success',
+                'data': {'reference': reference, 'status': 'completed'}
+            }, status=200)
 
         headers = {
             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
@@ -494,73 +596,122 @@ class VerifyPaystackPaymentAPIView(APIView):
 
         try:
             response = requests.get(verify_url, headers=headers)
-            response.raise_for_status()
+            response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
             result = response.json()
-        except requests.RequestException:
-            return Response({'message': 'Failed to connect to Paystack.'}, status=503)
+        except requests.exceptions.RequestException as e:
+            # More specific error handling for network issues, DNS, etc.
+            return Response({'message': f'Failed to connect to Paystack: {e}'}, status=503)
         except ValueError:
-            return Response({'message': 'Invalid response from Paystack.'}, status=502)
+            # Handles cases where response.json() fails (e.g., non-JSON response)
+            return Response({'message': 'Invalid JSON response from Paystack.'}, status=502)
 
+        # Check if the Paystack API call itself was successful
         if result.get("status") is True and "data" in result:
             data = result["data"]
             status_from_paystack = data.get("status")
+            paystack_amount_kobo = data.get('amount')
 
-            if status_from_paystack == "success":
-                payment_record.status = 'completed'
-                payment_record.completed_at = timezone.now()
-                payment_record.paystack_response_status = status_from_paystack
-                payment_record.gateway_response = data.get('gateway_response')
-                payment_record.save()
-                paystack_amount_kobo = data.get('amount')
-                
-                reference = request.data.get("reference")
-                received_amount_ghs = paystack_amount_kobo / 100.0 
-                
+            # Important: Verify currency and amount match
+            # Paystack amount is in kobo/pesewas, convert to GHS for comparison
+            received_amount_ghs = paystack_amount_kobo / 100.0
 
-                # user_instance = payment_record.user
-                try:
-                    # Find the subscription plan based on the received amount
-                    # Consider if multiple plans can have the same price or if you need a specific plan ID
-                    matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs)
-                except SubscriptionPlan.DoesNotExist:
+            # Use a database transaction to ensure atomicity
+            # If any step fails, all changes are rolled back.
+            with transaction.atomic():
+                if status_from_paystack == "success":
+                    # Update the payment record details
+                    payment_record.status = 'completed'
+                    payment_record.completed_at = timezone.now()
+                    payment_record.paystack_response_status = status_from_paystack
+                    payment_record.paystack_response_message = result.get('message', '')
+                    payment_record.gateway_response = data.get('gateway_response')
+                    payment_record.save()
+
+                    # Find the subscription plan
+                    # It's safer to store the plan ID or name in your initial PaymentTransaction
+                    # if the amount alone isn't unique for plans.
+                    # For this example, we'll continue using amount.
+                    try:
+                        # You might need to adjust this to match the exact plan based on price
+                        # For example, if you have plans with the same price but different features,
+                        # you might need to pass `plan_id` or `plan_name` in the initial payment request metadata.
+                        matched_plan = SubscriptionPlan.objects.get(price=received_amount_ghs)
+                    except SubscriptionPlan.DoesNotExist:
+                        # Payment was successful but no matching plan found in your system.
+                        # This indicates a data discrepancy or an invalid payment amount.
+                        # You might want to refund or manually assign a plan.
+                        return Response({
+                            "message": "Payment successful, but no matching subscription plan found for this amount. Please contact support.",
+                            "payment_status": "success_no_plan_match",
+                            "data": data
+                        }, status=200) # Still 200, as Paystack payment was success.
+
+                    # Upgrade or renew the subscription based on the matched plan
+                    activation_successful = activate_user_subscription(
+                        user_instance=request.user,
+                        subscription_plan=matched_plan,
+                        payment_transaction=payment_record
+                    )
+
+                    if activation_successful:
+                        return Response({
+                            "message": "Payment verified and subscription activated/updated successfully.",
+                            "status": "success",
+                            "data": data
+                        }, status=200)
+                    else:
+                        # Handle cases where subscription activation failed for an internal reason
+                        # after successful payment. This is critical.
+                        return Response({
+                            "message": "Payment successful, but subscription activation failed. Please contact support.",
+                            "status": "internal_subscription_error",
+                            "data": data
+                        }, status=500)
+
+                elif status_from_paystack == "failed":
+                    payment_record.status = 'failed'
+                    payment_record.paystack_response_status = status_from_paystack
+                    payment_record.paystack_response_message = result.get('message', '')
+                    payment_record.gateway_response = data.get('gateway_response')
+                    payment_record.save()
                     return Response({
-                        "payment_status": "success_but_no_plan",
-                        "message": "Payment successful, but no matching subscription plan found for this amount.",
+                        "message": "Payment failed.",
+                        "status": "failed",
                         "data": data
-                    }, status=200) # Still 200, as Paystack payment was success, but internal issue
-          
+                    }, status=400)
 
-                return Response({
-                    "message": "Payment verified successfully.",
-                    "status": "success",
-                    "data": data
-                }, status=200)
+                elif status_from_paystack == "abandoned":
+                    payment_record.status = 'abandoned'
+                    payment_record.paystack_response_status = status_from_paystack
+                    payment_record.paystack_response_message = result.get('message', '')
+                    payment_record.gateway_response = data.get('gateway_response')
+                    payment_record.save()
+                    return Response({
+                        "message": "Payment was abandoned.",
+                        "status": "abandoned",
+                        "data": data
+                    }, status=408)
 
-            elif status_from_paystack == "failed":
-                return Response({
-                    "message": "Payment failed.",
-                    "status": "failed",
-                    "data": data
-                }, status=400)
-
-            elif status_from_paystack == "abandoned":
-                return Response({
-                    "message": "Payment was abandoned.",
-                    "status": "abandoned",
-                    "data": data
-                }, status=408)
-
-            else:
-                return Response({
-                    "message": f"Payment is currently {status_from_paystack}.",
-                    "status": status_from_paystack,
-                    "data": data
-                }, status=202)
+                else:
+                    # For other statuses like "pending", "reversed", etc.
+                    # Update the record with the latest status from Paystack
+                    payment_record.status = status_from_paystack
+                    payment_record.paystack_response_status = status_from_paystack
+                    payment_record.paystack_response_message = result.get('message', '')
+                    payment_record.gateway_response = data.get('gateway_response')
+                    payment_record.save()
+                    return Response({
+                        "message": f"Payment is currently {status_from_paystack}.",
+                        "status": status_from_paystack,
+                        "data": data
+                    }, status=202) # 202 Accepted for processing, not yet final
 
         else:
+            # This block handles cases where Paystack API call itself failed (e.g., invalid reference)
+            error_message = result.get("message", "Verification failed due to an unknown Paystack error.")
             return Response({
-                "message": result.get("message", "Verification failed."),
-                "status": "error",
+                "message": error_message,
+                "status": "paystack_api_error",
                 "data": result
             }, status=500)
 # logger = logging.getLogger(__name__)
