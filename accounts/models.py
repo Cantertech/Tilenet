@@ -9,7 +9,6 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from django.conf import settings
 from django.utils import timezone
-from subscriptions.models import PaymentTransaction
 
 
 class AppVersion(models.Model):
@@ -97,8 +96,7 @@ class UserSubscription(models.Model):
         default='Pending'
     )
     is_trial_active = models.BooleanField(default=True)
-    last_payment = models.ForeignKey(PaymentTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='activated_subscriptions')
-
+   
     def save(self, *args, **kwargs):
         if not self.end_date:
             self.end_date = self.start_date + timedelta(days=self.plan.duration_in_days)
