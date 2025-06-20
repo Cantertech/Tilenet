@@ -85,6 +85,7 @@ def get_trade_specific_styles(project_type):
     
     return trade_styles.get(project_type, trade_styles['tiles'])
 
+
 def generate_project_pdf(project):
     """Generate a PDF for a project estimate"""
     # Create a temporary file

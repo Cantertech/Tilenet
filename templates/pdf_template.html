@@ -351,8 +351,8 @@
                             <td>{{ room.name|default:"[Room Name]" }}</td> {# Display room name #}
                             {# Removed Type, Length, Breadth, Height cells #}
                             {# Use calculated fields from Room object, ensure they are Decimal in backend and formatted here #}
-                            <td>{{ room.floor_area|default:0|floatformat:2 }}</td>
-                            <td>{{ room.wall_area|default:0|floatformat:2 }}</td>
+                            <td>{{ room.floor_area_with_waste|default:0|floatformat:2 }}</td>
+                            <td>{{ room.wall_area_with_waste|default:0|floatformat:2 }}</td>
                         </tr>
                         
                         {% endfor %}

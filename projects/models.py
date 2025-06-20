@@ -240,6 +240,7 @@ class Project(models.Model):
         verbose_name=_("Total Wall Area")
     )
     total_area = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Area Calculated"))
+    total_area_with_waste = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Area Calculated"))
     total_labor_cost = models.DecimalField(max_digits=16, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Labor Cost"))
     cost_per_area = models.DecimalField(max_digits=12, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Cost Per Unit Area"))
     estimated_days = models.IntegerField(default=1, verbose_name=_("Estimated Days"))
@@ -381,8 +382,11 @@ class Room(models.Model):
 
     # Stored fields for calculated areas (values set by views/external logic)
     floor_area = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Floor Area Calculated"))
+    floor_area_with_waste = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Floor Area Calculated with waste"))
     wall_area = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Wall Area Calculated"))
+    wall_area_with_waste = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Wall Area Calculated with waste"))
     total_area = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Area Calculated"))
+    total_area_with_waste = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Area Calculated with waste"))
 
 
     class Meta:

@@ -10,6 +10,23 @@ from .models import (
     # Assuming other models are imported here
 )
 
+
+def get_wastage_percentage(area: float) -> float:
+    if area <= 20:
+        return 20
+    elif area <= 50:
+        return 16
+    elif area <= 100:
+        return 8
+    else:
+        return 5
+
+def get_total_area_with_wastage(area: decimal.Decimal) -> decimal.Decimal:
+    percent = decimal.Decimal(get_wastage_percentage(area))
+    multiplier = decimal.Decimal("1.00") + (percent / decimal.Decimal("100"))
+    return (area * multiplier).quantize(decimal.Decimal("1.00"))
+
+
 DEFAULT_WALL_COVERAGE_RATE = decimal.Decimal(12.0)
 DEFAULT_FLOOR_COVERAGE_RATE = decimal.Decimal(14.0)
 DEFAULT_ADDITIONAL_DAYS = 0
@@ -171,12 +188,18 @@ def calculate_room_areas_and_save(room_instance):
                  calculated_wall_area = (2 * length_m + 2 * breadth_m) * height_m
         calculated_total_area = calculated_floor_area + calculated_wall_area # Sum floor and wall for total area
         print(f"Basic areas calculated: Floor={calculated_floor_area}, Wall={calculated_wall_area}, Total={calculated_total_area}")
-
+    calculated_floor_area_with_wastage = get_total_area_with_wastage(calculated_floor_area)
+    calculated_wall_area_with_wastage = get_total_area_with_wastage(calculated_wall_area)
+    calculated_total_area_with_wastage = get_total_area_with_wastage(calculated_total_area)
+    print(f'this is the claculted with wastage : {calculated_floor_area_with_wastage,calculated_wall_area_with_wastage,calculated_total_area_with_wastage}')
     room_instance.floor_area = decimal.Decimal(calculated_floor_area)
+    room_instance.floor_area_with_waste = decimal.Decimal(calculated_floor_area_with_wastage)
     room_instance.wall_area = decimal.Decimal(calculated_wall_area)
+    room_instance.wall_area_with_waste = decimal.Decimal(calculated_wall_area_with_wastage)
     room_instance.total_area = decimal.Decimal(calculated_total_area)
-    room_instance.save(update_fields=['floor_area', 'wall_area', 'total_area'])
-    print(f"Saved areas for Room ID {room_instance.id}: Floor={room_instance.floor_area}, Wall={room_instance.wall_area}, Total={room_instance.total_area}")
+    room_instance.total_area_with_waste = decimal.Decimal(calculated_total_area_with_wastage)
+    room_instance.save(update_fields=['floor_area', 'wall_area', 'total_area','floor_area_with_waste','wall_area_with_waste','total_area_with_waste'])
+    print(f"Saved areas for Room ID {room_instance.id}: Floor={room_instance.floor_area}, Wall={room_instance.wall_area}, Total={room_instance.total_area_with_waste}")
 
 def calculate_project_areas_and_save(project_instance):
     """
@@ -189,28 +212,34 @@ def calculate_project_areas_and_save(project_instance):
 
     total_floor = decimal.Decimal(0)
     total_wall = decimal.Decimal(0)
+    total_floor_with_waste = decimal.Decimal(0)
+    total_wall_with_waste = decimal.Decimal(0)
 
     for room in rooms:
         total_floor += decimal.Decimal(room.floor_area or 0)
         total_wall += decimal.Decimal(room.wall_area or 0)
+        total_floor_with_waste += decimal.Decimal(room.floor_area_with_waste or 0)
+        total_wall_with_waste += decimal.Decimal(room.wall_area_with_waste or 0)
+    
+    print(f'this is the individual ones :{total_floor_with_waste,total_wall_with_waste}')
 
     project_instance.total_floor_area = total_floor
     project_instance.total_wall_area = total_wall
     project_instance.total_area = total_floor + total_wall 
-    project_instance.save(update_fields=['total_floor_area', 'total_wall_area', 'total_area'])
-    print(f"Saved total areas for Project ID {project_instance.id}: Total Floor={project_instance.total_floor_area}, Total Wall={project_instance.total_wall_area}, Total Area={project_instance.total_area}")
+    project_instance.total_area_with_waste = total_floor_with_waste + total_wall_with_waste
+    project_instance.save(update_fields=['total_floor_area', 'total_wall_area', 'total_area','total_area_with_waste'])
+    print(f"Saved total areas for Project ID {project_instance.id}: Total Floor={project_instance.total_floor_area}, Total Wall={project_instance.total_wall_area}, Total Area={project_instance.total_area}, Total Area_with waste={project_instance.total_area_with_waste}")
 
 def convert_wheelbarrows_to_best_unit(wheelbarrows: float) -> tuple[float, str]:
     WHEELBARROWS_PER_LARGE_TIPPER = 300
-    WHEELBARROWS_PER_SMALL_TIPPER = 175 # Assuming 1 small tipper is exactly 175 wheelbarrows
+    WHEELBARROWS_PER_SMALL_TIPPER = 175 
     HEADPANS_PER_WHEELBARROW = 8
 
-    # Start with the largest unit conversion
     if wheelbarrows >= WHEELBARROWS_PER_LARGE_TIPPER:
         large_tippers = wheelbarrows / WHEELBARROWS_PER_LARGE_TIPPER
         return round(large_tippers, 2), "large tipper"
     # Then check for small tippers (quantities between 175 and 300)
-    elif wheelbarrows >= WHEELBARROWS_PER_SMALL_TIPPER: # This covers 175 <= wheelbarrows < 300
+    elif wheelbarrows >= WHEELBARROWS_PER_SMALL_TIPPER: 
         small_tippers = wheelbarrows / WHEELBARROWS_PER_SMALL_TIPPER
         return round(small_tippers, 2), "small tipper"
     # Then for single wheelbarrows (quantities between 1 and 175)
@@ -220,6 +249,12 @@ def convert_wheelbarrows_to_best_unit(wheelbarrows: float) -> tuple[float, str]:
     else: # This covers 0 <= wheelbarrows < 1
         headpans = wheelbarrows * HEADPANS_PER_WHEELBARROW
         return round(headpans, 2), "headpan"
+    
+def convert_grout_total(grout: float) -> tuple[float, str]:
+    New_total = grout/3
+    return round(New_total) ,"bags"
+
+
 
 
 def calculate_project_material_item_totals_and_save(project_material_instance):
@@ -363,6 +398,16 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
         project_material_instance.quantity_with_wastage = decimal.Decimal(str(converted_value * float(wastage_multiplier))) # Apply wastage to converted value
         project_material_instance.unit = converted_unit # Update the unit string on the ProjectMaterial
         print(f"Sand converted and assigned: {converted_value} {converted_unit}, Qty with wastage: {project_material_instance.quantity_with_wastage}")
+        
+    elif material_name == 'grout':
+        quantity_in_float = float(calculated_quantity_raw) # Convert Decimal to float for the conversion function
+        converted_value, converted_unit = convert_grout_total(quantity_in_float)
+
+        # Assign to the ProjectMaterial instance's quantity and unit fields
+        project_material_instance.quantity = decimal.Decimal(str(converted_value)) # Convert back to Decimal for storage
+        project_material_instance.quantity_with_wastage = decimal.Decimal(str(converted_value * float(wastage_multiplier))) # Apply wastage to converted value
+        project_material_instance.unit = converted_unit # Update the unit string on the ProjectMaterial
+        print(f"grout converted and assigned: {converted_value} {converted_unit}, Qty with wastage: {project_material_instance.quantity_with_wastage}")
     else:
         # For non-sand materials, assign the raw and wastage quantities directly
         project_material_instance.quantity = calculated_quantity_raw
@@ -505,7 +550,7 @@ def calculate_project_financial_totals_and_save(project_instance):
     profit_amount = decimal.Decimal(0)
     profit_type = project_instance.profit_type
     profit_value = decimal.Decimal(project_instance.profit_value or 0)
-    total_area_dec = decimal.Decimal(project_instance.total_area or 0) # Use total_area for per_area profit
+    total_area_dec = decimal.Decimal(project_instance.total_area_with_waste or 0) # Use total_area for per_area profit
     total_labour_cost = decimal.Decimal(0)
     print(f"Calculating total labour costs for Project {project_instance.id}.")
     if not project_instance:
@@ -535,7 +580,7 @@ def calculate_project_financial_totals_and_save(project_instance):
 
     if total_area_dec > 0:
         if profit_type == 'fixed':
-            project_instance.cost_per_area = (project_instance.total_labor_cost + profit_amount) / total_area_dec
+            project_instance.cost_per_area = (project_instance.total_labor_cost) / total_area_dec
         else:
             project_instance.cost_per_area = profit_value
     else:
@@ -571,6 +616,9 @@ def calculate_project_totals(project_id):
         project_instance.total_floor_area = area_aggregates.get('total_floor_area_sum') or decimal.Decimal(0)
         project_instance.total_wall_area = area_aggregates.get('total_wall_area_sum') or decimal.Decimal(0)
         project_instance.total_area = project_instance.total_floor_area + project_instance.total_wall_area
+        calculate_project_areas_and_save(project_instance)
+
+        
         print(f"Aggregated Project Areas: Total Floor={project_instance.total_floor_area}, Total Wall={project_instance.total_wall_area}, Total Area={project_instance.total_area}")
         project_instance.save(update_fields=['total_floor_area', 'total_wall_area', 'total_area'])
         print(f"Saved total project areas for Project ID {project_instance.id}.")

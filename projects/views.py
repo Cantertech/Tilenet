@@ -442,11 +442,6 @@ class CreateProjectEstimateView(APIView):
                          room_instance.save(update_fields=['details_content_type', 'details_object_id'])
                          print("No details instance to link or existing details cleared.")
 
-
-            # --- Process Materials ---
-            # NOTE: Quantity calculations are NOT done here.
-            # ProjectMaterialSerializer's create method links Material and sets name/unit.
-            # Quantity calculations happen AFTER all ProjectMaterials are created, in project_calculations.calculate_project_totals.
             if materials_data and isinstance(materials_data, list):
                 print("--- Processing Material Data ---")
                 for material_data in materials_data:
@@ -455,8 +450,6 @@ class CreateProjectEstimateView(APIView):
 
                     if not item_serializer.is_valid():
                         print("ProjectMaterial Serializer Errors:", item_serializer.errors)
-                        # Use the helper function to print errors in a structured way
-                        # print_serializer_errors("ProjectMaterialSerializer", item_serializer.errors)
                         return Response(item_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
                     project_material_instance = item_serializer.save()
@@ -695,9 +688,9 @@ def generate_estimatepdf(request):
                 'customer_location': location_payload if location_payload is not None else project_instance.customer_location or project_instance.location or 'N/A', # Use location from payload, fallback to customer_location, then project location
 
                 # Area Details
-                'total_area': decimal.Decimal(project_data.get('total_area', '0')),
-                'total_floor_area': decimal.Decimal(project_data.get('total_floor_area', '0')),
-                'total_wall_area': decimal.Decimal(project_data.get('total_wall_area', '0')),
+                'total_area': decimal.Decimal(project_data.get('total_area_with_waste', '0')),
+                'total_floor_area': decimal.Decimal(project_data.get('floor_area_with_waste', '0')),
+                'total_wall_area': decimal.Decimal(project_data.get('total_wall_area_with_waste', '0')),
                 'cost_per_area': decimal.Decimal(project_data.get('cost_per_area', '0')),
 
                 # Lists of related items (prefetched data should be available through serializer data)
@@ -717,19 +710,10 @@ def generate_estimatepdf(request):
                 'grand_total': calculated_grand_total, # Use the calculated grand total
 
             }
-            # Ensure decimal values are converted to strings with correct precision for template if needed,
-            # but floatformat should handle Decimal objects directly, so passing Decimals is usually fine.
-
-            # Render the HTML template with the context data
-            # Ensure template is found, e.g., 'yourapp/pdf_template.html' or just 'pdf_template.html'
+            
             pdf_html_content = render_to_string('pdf_template.html', context_data)
 
-            # Generate the PDF using WeasyPrint
-            # base_url is crucial for WeasyPrint to load static files (like the logo)
-            # Make sure your static files are configured correctly and accessible by WeasyPrint
             pdf_file = HTML(string=pdf_html_content, base_url=context_data['base_url']).write_pdf()
-
-            # Encode the PDF to base64 and return
             pdf_base64 = base64.b64encode(pdf_file).decode('utf-8')
             return Response(pdf_base64, status=status.HTTP_200_OK)
 
