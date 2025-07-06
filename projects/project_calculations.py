@@ -63,20 +63,6 @@ CONVERSION_FACTORS_TO_METERS = {
     'centimeters': decimal.Decimal(0.01),
 }
 
-# --- Material Coverage/Usage Rates ---
-# This dictionary defines how much of a material is needed per unit of area/volume/length
-# for different project types.
-# The values here should represent the QUANTITY of material needed per:
-# - square meter (for area-based materials like grout, adhesive, tiles)
-# - linear meter (for linear materials like strip)
-# - cubic meter (for volume-based materials like cement, sand in screed/concrete)
-#
-# NOTE: The current payload only provides room dimensions. Calculating quantity for
-# volume-based materials (cement, sand) accurately requires screed/concrete thickness,
-# and for linear materials (strip) requires perimeter or linear features.
-# The current logic will use total_area, which is likely incorrect for these.
-# This is a limitation based on available input data and current logic structure.
-# You might need to adjust input payload or calculation logic for accuracy.
 COVERAGE_RATES_PER_UNIT = {
     'tiling': {
         'cement': decimal.Decimal(1) / decimal.Decimal(6),    
@@ -94,15 +80,26 @@ COVERAGE_RATES_PER_UNIT = {
 # //6.25 kg of chemical = 14 m^2 x 3
 # //3kg of grout = 14 m^2,
 
+
+# 68×32 = 203 m2
+# 52×20 =   97 m2
+# Total.   = 300 m2
+# Materials 
+# Pavement tiles  6 piece for 1 m2
+# 300×6 = 1800 piece 
+# Cement 25 piece for 1 bag 
+# 1800 ÷ 25 = 72 bags 
+# Grouting cement 50 m2 for 1 bag 
+# 300 ÷ 50 = 6 bags 
+# Rough sand 3 wheel barrow for 25 piece of pavement 
+# Workmanship ¢ 35 per m2 
+# 300 m2 × ¢ 35 = ¢ 10,500
+
     'pavement': {
-        'cement': decimal.Decimal(1) / decimal.Decimal(5),         # ≈ 0.2 bags per m²
-        'sand': decimal.Decimal(1) / decimal.Decimal(1.5),         # ≈ 0.6667 m³ per m²
-        'tiles': lambda tile_area_sq_m: decimal.Decimal(1) / tile_area_sq_m if tile_area_sq_m else decimal.Decimal(0),
-        'acid': decimal.Decimal(1) / decimal.Decimal(450),         # ≈ 0.0022 liters per m²
-        'stone base': decimal.Decimal(0.1),                        # e.g. crushed stone (m³ per m²)
-        'edge restraint': decimal.Decimal(0.2),                    # e.g. concrete/metal borders (linear meters per m²)
-        'geotextile': decimal.Decimal(1),                          # 1 m² of geotextile underlay per m²
-        'water': decimal.Decimal(0.01),                            # Water for curing/binding (m³ per m²)
+        'cement': decimal.Decimal(1) / decimal.Decimal(5),      #   per  m²
+        'rough sand': decimal.Decimal(1) / decimal.Decimal(1.5),        
+        'pavement tiles': lambda tile_area_sq_m: decimal.Decimal(1) / tile_area_sq_m if tile_area_sq_m else decimal.Decimal(0),
+        'grouting cement': decimal.Decimal(1) / decimal.Decimal(450),        
     },
 
     'mason': {
@@ -169,7 +166,7 @@ def calculate_room_areas_and_save(room_instance):
 
     length_m = convert_to_meters(room_instance.length or 0, measurement_unit)
     breadth_m = convert_to_meters(room_instance.breadth or 0, measurement_unit)
-    height_m = convert_to_meters(room_instance.height or 0, measurement_unit) # Assuming height exists
+    height_m = convert_to_meters(room_instance.height or 0, measurement_unit) 
 
     print(f"Dimensions in meters: L={length_m}, B={breadth_m}, H={height_m}")
 
@@ -225,9 +222,11 @@ def calculate_project_areas_and_save(project_instance):
 
     project_instance.total_floor_area = total_floor
     project_instance.total_wall_area = total_wall
+    project_instance.total_floor_area_with_waste = total_floor_with_waste
+    project_instance.total_wall_area_with_waste = total_wall_with_waste
     project_instance.total_area = total_floor + total_wall 
     project_instance.total_area_with_waste = total_floor_with_waste + total_wall_with_waste
-    project_instance.save(update_fields=['total_floor_area', 'total_wall_area', 'total_area','total_area_with_waste'])
+    project_instance.save(update_fields=['total_floor_area','total_floor_area_with_waste','total_wall_area_with_waste', 'total_wall_area', 'total_area','total_area_with_waste'])
     print(f"Saved total areas for Project ID {project_instance.id}: Total Floor={project_instance.total_floor_area}, Total Wall={project_instance.total_wall_area}, Total Area={project_instance.total_area}, Total Area_with waste={project_instance.total_area_with_waste}")
 
 def convert_wheelbarrows_to_best_unit(wheelbarrows: float) -> tuple[float, str]:
@@ -424,10 +423,7 @@ def calculate_project_material_item_totals_and_save(project_material_instance):
 
 
 def calculate_worker_total_cost_and_save(worker_instance, estimated_days):
-    """
-    Calculates the total labor cost for a worker group based on their rate, count,
-    rate type, and the estimated project days. Saves the updated total_cost field.
-    """
+
     print(f"Calculating total cost for Worker ID {worker_instance.id} (Role: {worker_instance.role}).")
     rate_dec = decimal.Decimal(worker_instance.rate or 0)
     count_int = worker_instance.count or 0
@@ -546,7 +542,6 @@ def calculate_project_estimated_days_and_save(project_instance):
 def calculate_project_financial_totals_and_save(project_instance):
     """Calculates and sets the financial total fields for the project."""
     print(f"Calculating project financial totals for Project ID {project_instance.id}.")
-    # Ensure project instance is up-to-date with latest costs and areas
     profit_amount = decimal.Decimal(0)
     profit_type = project_instance.profit_type
     profit_value = decimal.Decimal(project_instance.profit_value or 0)

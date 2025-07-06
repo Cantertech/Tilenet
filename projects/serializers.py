@@ -102,9 +102,13 @@ class RoomSerializer(serializers.ModelSerializer):
             'id', 'project', 'name', 'room_type',
             'length', 'breadth', 'height',
             'floor_area', 'wall_area', 'total_area',
+            'floor_area_with_waste', 'wall_area_with_waste', 'total_area_with_waste',
             'details_data',
         ]
-        read_only_fields = ['floor_area', 'wall_area', 'total_area']
+        read_only_fields = [
+            'floor_area', 'wall_area', 'total_area',
+            'floor_area_with_waste', 'wall_area_with_waste', 'total_area_with_waste',
+        ]
 
     def get_details_data(self, obj):
         if obj.details:

@@ -660,13 +660,12 @@ def generate_estimatepdf(request):
             subtotal = decimal.Decimal(project_data.get('subtotal_cost', '0'))
             profit_amount = decimal.Decimal(project_data.get('profit', '0'))
             calculated_grand_total = subtotal + profit_amount + current_transport
+            print(f"these are the data used for generating the pdf {project_data,subtotal,profit_amount}")
 
             context_data = {
-                # Company/User Profile Info
-                'user_profile': user_profile, # Pass the UserProfile object/dictionary
+                'user_profile': user_profile, 
                 'user_info': user,
                 'project_date': timezone.now().date(),
-                # Settings/Theme
                 'primary_color': settings.PRIMARY_COLOR if hasattr(settings, 'PRIMARY_COLOR') else '#007bff', # Get primary color from settings
                 'base_url': request.build_absolute_uri('/')[:-1] + settings.STATIC_URL, # Base URL for static files
                 'validity_days': 30, # Or get from settings or UserProfile
@@ -697,8 +696,6 @@ def generate_estimatepdf(request):
                 'rooms': project_data.get('rooms', []),
                 'materials': project_data.get('materials', []),
                 'workers': project_data.get('workers', []),
-
-                # Financial Summary & Totals (Calculated in view context)
                 'total_material_cost': decimal.Decimal(project_data.get('total_material_cost', '0')),
                 'total_labor_cost': decimal.Decimal(project_data.get('total_labor_cost', '0')),
                 'subtotal_cost': subtotal, # Use the calculated subtotal

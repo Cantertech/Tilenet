@@ -239,6 +239,18 @@ class Project(models.Model):
         default=decimal.Decimal(0),
         verbose_name=_("Total Wall Area")
     )
+    total_floor_area_with_waste = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=decimal.Decimal(0),
+        verbose_name=_("Total Floor Area with waste")
+    )
+    total_wall_area_with_waste = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=decimal.Decimal(0),
+        verbose_name=_("Total Wall Area with waste")
+    )
     total_area = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Area Calculated"))
     total_area_with_waste = models.DecimalField(max_digits=14, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Area Calculated"))
     total_labor_cost = models.DecimalField(max_digits=16, decimal_places=2, default=decimal.Decimal(0), verbose_name=_("Total Labor Cost"))
